@@ -21,6 +21,7 @@ import {
   X,
   UserCircle,
   ClipboardList,
+  Bike,
 } from 'lucide-react';
 
 interface NavItem {
@@ -34,6 +35,7 @@ const navItems: (NavItem & { exact?: boolean })[] = [
   { label: 'แดชบอร์ด', href: '/dashboard', icon: <LayoutDashboard size={20} />, exact: true },
   { label: 'สร้างใบงาน', href: '/tasks/new', icon: <FileText size={20} />, roles: ['requester', 'admin'] },
   { label: 'งานของฉัน', href: '/tasks', icon: <ClipboardList size={20} />, roles: ['requester', 'admin'], exact: true },
+  { label: 'งานวิ่ง', href: '/messenger', icon: <Bike size={20} />, roles: ['messenger'], exact: true },
   { label: 'จ่ายงาน', href: '/dispatcher', icon: <Truck size={20} />, roles: ['dispatcher', 'admin'], exact: true },
   { label: 'รายงาน', href: '/dispatcher/analytics', icon: <BarChart3 size={20} />, roles: ['dispatcher', 'admin'] },
   { label: 'จัดการผู้ใช้', href: '/admin/users', icon: <Users size={20} />, roles: ['admin'] },

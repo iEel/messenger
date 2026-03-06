@@ -20,6 +20,7 @@ import {
   Layers,
   List,
   Navigation,
+  Route,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
 
@@ -92,7 +93,29 @@ export default function DispatcherPage() {
   useEffect(() => {
     fetchTasks();
     fetchMessengers();
+    fetchOfficeCoords();
   }, [fetchTasks]);
+
+  const [officeCoords, setOfficeCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  const fetchOfficeCoords = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      const lat = parseFloat(data.settings?.office_lat);
+      const lng = parseFloat(data.settings?.office_lng);
+      if (lat && lng) setOfficeCoords({ lat, lng });
+    } catch { /* ignore */ }
+  };
+
+  // Haversine formula for quick distance calculation
+  const calcDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
 
   const fetchMessengers = async () => {
     try {
@@ -211,6 +234,11 @@ export default function DispatcherPage() {
             <p className="flex items-center gap-1.5">
               <Clock size={13} /> {new Date(task.CreatedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
             </p>
+            {officeCoords && task.Latitude && task.Longitude && (
+              <p className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">
+                <Route size={13} /> {calcDistance(officeCoords.lat, officeCoords.lng, task.Latitude, task.Longitude).toFixed(1)} km
+              </p>
+            )}
           </div>
 
           <div className="mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">

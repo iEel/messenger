@@ -20,6 +20,8 @@ import {
   Loader2,
   Route,
   Timer,
+  Pencil,
+  XCircle,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
 
@@ -135,6 +137,25 @@ export default function TaskDetailPage() {
     }
   };
 
+  const handleCancel = async () => {
+    if (!confirm('คุณต้องการยกเลิกใบงานนี้ใช่หรือไม่?\n\nเมื่อยกเลิกแล้วจะไม่สามารถกู้คืนได้')) return;
+
+    setActionLoading('cancel');
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled', notes: 'ผู้สร้างยกเลิกใบงาน' }),
+      });
+
+      if (res.ok) {
+        router.push('/tasks');
+      }
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -181,6 +202,29 @@ export default function TaskDetailPage() {
           <p className="text-sm text-surface-500 mt-1">สร้างเมื่อ {new Date(task.CreatedAt).toLocaleString('th-TH')}</p>
         </div>
       </div>
+
+      {/* Edit / Cancel Actions — แสดงเมื่อสถานะ = new */}
+      {task.Status === 'new' && (
+        <div className="flex items-center gap-3">
+          <Link href={`/tasks/${taskId}/edit`}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
+                       text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20
+                       border border-amber-200 dark:border-amber-800
+                       hover:bg-amber-100 dark:hover:bg-amber-900/30
+                       transition-all">
+            <Pencil size={16} /> แก้ไขใบงาน
+          </Link>
+          <button onClick={handleCancel} disabled={actionLoading === 'cancel'}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
+                       text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20
+                       border border-red-200 dark:border-red-800
+                       hover:bg-red-100 dark:hover:bg-red-900/30
+                       disabled:opacity-50 transition-all cursor-pointer">
+            {actionLoading === 'cancel' ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
+            ยกเลิกใบงาน
+          </button>
+        </div>
+      )}
 
       {/* Action Center - แสดงเมื่อสถานะ = issue */}
       {task.Status === 'issue' && (

@@ -122,6 +122,97 @@ export async function PATCH(
   }
 }
 
+// PUT - แก้ไขข้อมูลใบงาน (เฉพาะสถานะ new)
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    // ตรวจสอบสถานะ — แก้ไขได้เฉพาะสถานะ new
+    const existing = await query<{ Status: string; RequesterId: number }[]>(
+      `SELECT Status, RequesterId FROM Tasks WHERE Id = @id`,
+      { id: parseInt(id) }
+    );
+
+    if (existing.length === 0) {
+      return NextResponse.json({ error: 'ไม่พบใบงาน' }, { status: 404 });
+    }
+
+    // เฉพาะเจ้าของงานหรือ admin เท่านั้น
+    const isOwner = existing[0].RequesterId === parseInt(session.user.id);
+    const isAdmin = session.user.role === 'admin';
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ error: 'คุณไม่มีสิทธิ์แก้ไขใบงานนี้' }, { status: 403 });
+    }
+
+    if (existing[0].Status !== 'new') {
+      return NextResponse.json({ error: 'แก้ไขได้เฉพาะใบงานที่ยังไม่ถูกจ่ายงาน (สถานะ: รอจ่ายงาน)' }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const {
+      recipientName, recipientPhone, recipientCompany,
+      taskType, documentDesc, notes,
+      address, district, subDistrict, province, postalCode,
+      latitude, longitude, googleMapsUrl,
+      priority, scheduledDate,
+    } = body;
+
+    await query(
+      `UPDATE Tasks SET
+        RecipientName = @recipientName,
+        RecipientPhone = @recipientPhone,
+        RecipientCompany = @recipientCompany,
+        TaskType = @taskType,
+        DocumentDesc = @documentDesc,
+        Notes = @notes,
+        Address = @address,
+        District = @district,
+        SubDistrict = @subDistrict,
+        Province = @province,
+        PostalCode = @postalCode,
+        Latitude = @latitude,
+        Longitude = @longitude,
+        GoogleMapsUrl = @googleMapsUrl,
+        Priority = @priority,
+        ScheduledDate = @scheduledDate,
+        UpdatedAt = GETDATE()
+      WHERE Id = @id`,
+      {
+        id: parseInt(id),
+        recipientName,
+        recipientPhone: recipientPhone || null,
+        recipientCompany: recipientCompany || null,
+        taskType: taskType || 'oneway',
+        documentDesc,
+        notes: notes || null,
+        address,
+        district: district || null,
+        subDistrict: subDistrict || null,
+        province: province || null,
+        postalCode: postalCode || null,
+        latitude: latitude || null,
+        longitude: longitude || null,
+        googleMapsUrl: googleMapsUrl || null,
+        priority: priority || 'normal',
+        scheduledDate: scheduledDate || null,
+      }
+    );
+
+    return NextResponse.json({ message: 'แก้ไขใบงานสำเร็จ' });
+  } catch (error) {
+    console.error('PUT /api/tasks/[id] error:', error);
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาด' }, { status: 500 });
+  }
+}
+
 // Background email notification
 async function sendEmailNotification(taskId: number, newStatus: string, notes?: string) {
   try {

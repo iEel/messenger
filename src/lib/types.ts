@@ -14,7 +14,8 @@ export type TaskStatus =
   | 'return_picked_up'
   | 'returning'
   | 'returned'
-  | 'rescheduled';
+  | 'rescheduled'
+  | 'cancelled';
 
 export type IssueProblemType = 
   | 'contact_failed' 
@@ -101,6 +102,7 @@ export const STATUS_CONFIG: Record<TaskStatus, { label: string; labelTh: string;
   returning:        { label: 'Returning',        labelTh: 'กำลังนำกลับ',         color: '#6366F1', bgColor: '#E0E7FF', icon: '🔄' },
   returned:         { label: 'Returned',         labelTh: 'คืนเอกสารสำเร็จ',     color: '#10B981', bgColor: '#D1FAE5', icon: '✅' },
   rescheduled:      { label: 'Rescheduled',      labelTh: 'เลื่อนวันส่ง',         color: '#F59E0B', bgColor: '#FEF3C7', icon: '📅' },
+  cancelled:        { label: 'Cancelled',        labelTh: 'ยกเลิก',              color: '#6B7280', bgColor: '#F3F4F6', icon: '🚫' },
 };
 
 export const ROLE_CONFIG: Record<UserRole, { label: string; labelTh: string; color: string; bgColor: string }> = {

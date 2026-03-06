@@ -280,7 +280,7 @@ export default function MessengerPage() {
                     <div className="flex gap-2 mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">
                       {/* Navigate */}
                       {task.Latitude && task.Longitude && (
-                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=driving`}
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=two_wheeler`}
                           target="_blank" rel="noopener noreferrer"
                           className="flex-1 py-2.5 rounded-xl text-xs font-medium text-center
                                      border border-surface-200 dark:border-surface-700

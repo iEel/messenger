@@ -324,7 +324,7 @@ export default function TaskDetailPage() {
             {/* Map Link */}
             <div className="flex gap-2 mt-3">
               {(task.Latitude && task.Longitude) && (
-                <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=driving`}
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=two_wheeler`}
                   target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-50 dark:bg-primary-900/20 
                              text-primary-600 dark:text-primary-400 text-sm font-medium hover:bg-primary-100 transition-colors">

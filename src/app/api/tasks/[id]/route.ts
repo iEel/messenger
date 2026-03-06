@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import type { Task, TaskStatusHistoryEntry } from '@/lib/types';
+import { sendMail, emailTaskAssigned, emailIssueAlert, emailTaskCompleted } from '@/lib/email';
 
 // GET - ดึงรายละเอียด Task
 export async function GET(
@@ -51,7 +52,7 @@ export async function GET(
   }
 }
 
-// PATCH - แก้ไข Task (assign, update status)
+// PATCH - แก้ไข Task (assign, update status, roundtrip)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -107,9 +108,67 @@ export async function PATCH(
       );
     }
 
+    // ส่งอีเมลแจ้งเตือนตามสถานะ (async, ไม่ block response)
+    if (status) {
+      sendEmailNotification(parseInt(id), status, notes).catch(err =>
+        console.error('[Email] Background send failed:', err)
+      );
+    }
+
     return NextResponse.json({ message: 'อัปเดตสำเร็จ' });
   } catch (error) {
     console.error('PATCH /api/tasks/[id] error:', error);
     return NextResponse.json({ error: 'เกิดข้อผิดพลาด' }, { status: 500 });
+  }
+}
+
+// Background email notification
+async function sendEmailNotification(taskId: number, newStatus: string, notes?: string) {
+  try {
+    const tasks = await query<{
+      TaskNumber: string; DocumentDesc: string; RecipientName: string;
+      Address: string; RequesterEmail: string; RequesterName: string;
+      MessengerEmail: string | null; MessengerName: string | null;
+      DispatcherEmails: string;
+    }[]>(`
+      SELECT t.TaskNumber, t.DocumentDesc, t.RecipientName, t.Address,
+             u1.Email AS RequesterEmail, u1.FullName AS RequesterName,
+             u2.Email AS MessengerEmail, u2.FullName AS MessengerName,
+             STUFF((SELECT ',' + Email FROM Users WHERE Role = 'dispatcher' AND IsActive = 1 AND Email IS NOT NULL FOR XML PATH('')), 1, 1, '') AS DispatcherEmails
+      FROM Tasks t
+      LEFT JOIN Users u1 ON t.RequesterId = u1.Id
+      LEFT JOIN Users u2 ON t.AssignedTo = u2.Id
+      WHERE t.Id = @id
+    `, { id: taskId });
+
+    if (tasks.length === 0) return;
+    const t = tasks[0];
+
+    switch (newStatus) {
+      case 'assigned': {
+        if (t.MessengerEmail) {
+          const mail = emailTaskAssigned(t.TaskNumber, t.DocumentDesc, t.RecipientName, t.Address, t.MessengerName || '');
+          await sendMail({ to: t.MessengerEmail, ...mail });
+        }
+        break;
+      }
+      case 'issue': {
+        if (t.DispatcherEmails) {
+          const mail = emailIssueAlert(t.TaskNumber, notes || 'ไม่ระบุ', t.MessengerName || '-', notes || '');
+          await sendMail({ to: t.DispatcherEmails, ...mail });
+        }
+        break;
+      }
+      case 'completed':
+      case 'returned': {
+        if (t.RequesterEmail) {
+          const mail = emailTaskCompleted(t.TaskNumber, t.RecipientName, t.RequesterName);
+          await sendMail({ to: t.RequesterEmail, ...mail });
+        }
+        break;
+      }
+    }
+  } catch (error) {
+    console.error('[Email] sendEmailNotification error:', error);
   }
 }

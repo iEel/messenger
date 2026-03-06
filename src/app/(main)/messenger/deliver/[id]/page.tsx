@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -11,6 +11,7 @@ import {
   Loader2,
   X,
   Upload,
+  ArrowRightLeft,
 } from 'lucide-react';
 import SignaturePad from '@/components/ui/SignaturePad';
 
@@ -26,6 +27,21 @@ export default function DeliveryPage() {
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [taskType, setTaskType] = useState<string>('oneway');
+  const [isRoundtrip, setIsRoundtrip] = useState(false);
+
+  // Fetch task info to check if roundtrip
+  useEffect(() => {
+    fetch(`/api/tasks/${taskId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.task) {
+          setTaskType(data.task.TaskType);
+          setIsRoundtrip(data.task.TaskType === 'roundtrip');
+        }
+      })
+      .catch(console.error);
+  }, [taskId]);
 
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -52,25 +68,28 @@ export default function DeliveryPage() {
 
     setIsLoading(true);
     try {
-      // อัปเดตสถานะเป็น completed พร้อมข้อมูล POD
       const podNotes = [
         `ผู้รับ: ${receiverName || '-'}`,
         `รูปถ่าย: ${photos.length} รูป`,
         notes ? `หมายเหตุ: ${notes}` : '',
       ].filter(Boolean).join(' | ');
 
+      // Roundtrip: ส่งสำเร็จ → เปลี่ยนเป็น return_picked_up (รอรับเอกสารกลับ)
+      // Oneway: ส่งสำเร็จ → completed
+      const nextStatus = isRoundtrip ? 'return_picked_up' : 'completed';
+
       await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'completed',
-          notes: podNotes,
+          status: nextStatus,
+          notes: podNotes + (isRoundtrip ? ' | 🔄 รอรับเอกสารกลับ' : ''),
           signatureData: signature,
         }),
       });
 
       setSuccess(true);
-      setTimeout(() => router.push('/messenger'), 2000);
+      setTimeout(() => router.push('/messenger'), 2500);
     } catch {
       alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
     } finally {

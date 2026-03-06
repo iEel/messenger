@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   Truck,
   Search,
-  Filter,
   UserCheck,
   Eye,
   MapPin,
@@ -18,6 +17,8 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
+  Layers,
+  List,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
 
@@ -57,13 +58,14 @@ export default function DispatcherPage() {
   const [assignModal, setAssignModal] = useState<TaskItem | null>(null);
   const [selectedMessenger, setSelectedMessenger] = useState<number | null>(null);
   const [assigning, setAssigning] = useState(false);
+  const [groupByZone, setGroupByZone] = useState(false);
 
   const fetchTasks = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams({
         page: String(page),
-        limit: '20',
+        limit: '50',
         ...(statusFilter !== 'all' && { status: statusFilter }),
         ...(search && { search }),
       });
@@ -122,7 +124,95 @@ export default function DispatcherPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  const totalPages = Math.ceil(total / 20);
+  // จัดกลุ่มตามเขต (Zone Clustering)
+  const zoneGroups = groupByZone
+    ? tasks.reduce((acc, task) => {
+        const zone = task.District || 'ไม่ระบุเขต';
+        if (!acc[zone]) acc[zone] = [];
+        acc[zone].push(task);
+        return acc;
+      }, {} as Record<string, TaskItem[]>)
+    : {};
+
+  const sortedZones = Object.keys(zoneGroups).sort((a, b) => {
+    if (a === 'ไม่ระบุเขต') return 1;
+    if (b === 'ไม่ระบุเขต') return -1;
+    return zoneGroups[b].length - zoneGroups[a].length;
+  });
+
+  const totalPages = Math.ceil(total / 50);
+
+  // Render a single task card
+  const renderTaskCard = (task: TaskItem) => {
+    const statusConf = STATUS_CONFIG[task.Status];
+    return (
+      <div key={task.Id}
+        className={`bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
+                    shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
+                    transition-all duration-200 overflow-hidden
+                    ${task.Status === 'issue' ? 'issue-flash border-red-300 dark:border-red-700' : ''}`}>
+        <div className="h-1.5" style={{ backgroundColor: statusConf?.color }} />
+        <div className="p-4">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <span className="font-bold text-sm font-mono text-surface-800 dark:text-white">{task.TaskNumber}</span>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
+                  style={{ backgroundColor: statusConf?.bgColor, color: statusConf?.color }}>
+                  {statusConf?.icon} {statusConf?.labelTh}
+                </span>
+                {task.Priority === 'urgent' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700">
+                    <AlertTriangle size={10} /> ด่วน
+                  </span>
+                )}
+                {task.TaskType === 'roundtrip' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
+                    <ArrowRightLeft size={10} />
+                  </span>
+                )}
+              </div>
+            </div>
+            <Link href={`/tasks/${task.Id}`}
+              className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-primary-500 transition-colors">
+              <Eye size={16} />
+            </Link>
+          </div>
+
+          <p className="text-sm text-surface-700 dark:text-surface-300 line-clamp-2 mb-2">{task.DocumentDesc}</p>
+          <div className="space-y-1 text-xs text-surface-500 dark:text-surface-400">
+            <p className="flex items-center gap-1.5">
+              <UserCheck size={13} /> {task.RecipientName}
+              {task.RecipientCompany && <span className="text-surface-400">({task.RecipientCompany})</span>}
+            </p>
+            <p className="flex items-center gap-1.5 truncate">
+              <MapPin size={13} /> {task.District || task.Address}
+            </p>
+            <p className="flex items-center gap-1.5">
+              <Clock size={13} /> {new Date(task.CreatedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
+            </p>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">
+            {task.MessengerName ? (
+              <p className="text-xs text-surface-500 flex items-center gap-1.5">
+                🏍️ <span className="font-medium text-surface-700 dark:text-surface-300">{task.MessengerName}</span>
+              </p>
+            ) : task.Status === 'new' ? (
+              <button onClick={() => { setAssignModal(task); setSelectedMessenger(null); }}
+                className="w-full py-2 rounded-lg text-xs font-semibold text-primary-600 dark:text-primary-400
+                           bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100
+                           transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                <UserCheck size={14} /> จ่ายงาน
+              </button>
+            ) : (
+              <p className="text-xs text-surface-400">ยังไม่มีแมส</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -137,12 +227,25 @@ export default function DispatcherPage() {
             <p className="text-sm text-surface-500 dark:text-surface-400">{total} ใบงานทั้งหมด</p>
           </div>
         </div>
-        <Link href="/dispatcher/analytics"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
-                     text-surface-600 dark:text-surface-400 border border-surface-200 dark:border-surface-700
-                     hover:bg-surface-100 dark:hover:bg-surface-800 transition-all">
-          <BarChart3 size={16} /> รายงาน
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* Zone Toggle */}
+          <button onClick={() => setGroupByZone(!groupByZone)}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
+                         border transition-all cursor-pointer
+                         ${groupByZone
+                           ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400'
+                           : 'border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800'
+                         }`}>
+            {groupByZone ? <Layers size={16} /> : <List size={16} />}
+            {groupByZone ? 'จัดตามเขต' : 'แสดงทั้งหมด'}
+          </button>
+          <Link href="/dispatcher/analytics"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
+                       text-surface-600 dark:text-surface-400 border border-surface-200 dark:border-surface-700
+                       hover:bg-surface-100 dark:hover:bg-surface-800 transition-all">
+            <BarChart3 size={16} /> รายงาน
+          </Link>
+        </div>
       </div>
 
       {/* Status Summary */}
@@ -196,83 +299,31 @@ export default function DispatcherPage() {
           <Truck size={48} className="mb-3 opacity-30" />
           <p className="font-medium">ไม่มีใบงาน</p>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {tasks.map((task) => {
-            const statusConf = STATUS_CONFIG[task.Status];
-            return (
-              <div key={task.Id}
-                className={`bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
-                            shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
-                            transition-all duration-200 overflow-hidden
-                            ${task.Status === 'issue' ? 'issue-flash border-red-300 dark:border-red-700' : ''}`}>
-                {/* Status Bar */}
-                <div className="h-1.5" style={{ backgroundColor: statusConf?.color }} />
-
-                <div className="p-4">
-                  {/* Top */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <span className="font-bold text-sm font-mono text-surface-800 dark:text-white">{task.TaskNumber}</span>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
-                          style={{ backgroundColor: statusConf?.bgColor, color: statusConf?.color }}>
-                          {statusConf?.icon} {statusConf?.labelTh}
-                        </span>
-                        {task.Priority === 'urgent' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700">
-                            <AlertTriangle size={10} /> ด่วน
-                          </span>
-                        )}
-                        {task.TaskType === 'roundtrip' && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
-                            <ArrowRightLeft size={10} />
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <Link href={`/tasks/${task.Id}`}
-                      className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-primary-500 transition-colors">
-                      <Eye size={16} />
-                    </Link>
-                  </div>
-
-                  {/* Content */}
-                  <p className="text-sm text-surface-700 dark:text-surface-300 line-clamp-2 mb-2">{task.DocumentDesc}</p>
-                  <div className="space-y-1 text-xs text-surface-500 dark:text-surface-400">
-                    <p className="flex items-center gap-1.5">
-                      <UserCheck size={13} /> {task.RecipientName}
-                      {task.RecipientCompany && <span className="text-surface-400">({task.RecipientCompany})</span>}
-                    </p>
-                    <p className="flex items-center gap-1.5 truncate">
-                      <MapPin size={13} /> {task.District || task.Address}
-                    </p>
-                    <p className="flex items-center gap-1.5">
-                      <Clock size={13} /> {new Date(task.CreatedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
-                    </p>
-                  </div>
-
-                  {/* Messenger or Assign Button */}
-                  <div className="mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">
-                    {task.MessengerName ? (
-                      <p className="text-xs text-surface-500 flex items-center gap-1.5">
-                        🏍️ <span className="font-medium text-surface-700 dark:text-surface-300">{task.MessengerName}</span>
-                      </p>
-                    ) : task.Status === 'new' ? (
-                      <button onClick={() => { setAssignModal(task); setSelectedMessenger(null); }}
-                        className="w-full py-2 rounded-lg text-xs font-semibold text-primary-600 dark:text-primary-400
-                                   bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100
-                                   transition-colors cursor-pointer flex items-center justify-center gap-1.5">
-                        <UserCheck size={14} /> จ่ายงาน
-                      </button>
-                    ) : (
-                      <p className="text-xs text-surface-400">ยังไม่มีแมส</p>
-                    )}
-                  </div>
+      ) : groupByZone ? (
+        /* Zone Grouped View */
+        <div className="space-y-6">
+          {sortedZones.map(zone => (
+            <div key={zone}>
+              <div className="flex items-center gap-2 mb-3 sticky top-0 z-10 bg-surface-50 dark:bg-surface-900 py-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                  <MapPin size={16} className="text-indigo-600 dark:text-indigo-400" />
                 </div>
+                <div>
+                  <h3 className="text-sm font-bold text-surface-800 dark:text-white">{zone}</h3>
+                  <p className="text-[10px] text-surface-500">{zoneGroups[zone].length} ใบงาน</p>
+                </div>
+                <div className="flex-1 border-b border-surface-200 dark:border-surface-700 ml-2" />
               </div>
-            );
-          })}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {zoneGroups[zone].map(task => renderTaskCard(task))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* Flat View */
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {tasks.map(task => renderTaskCard(task))}
         </div>
       )}
 

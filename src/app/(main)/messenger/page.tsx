@@ -58,11 +58,11 @@ export default function MessengerPage() {
       const tasksData = await tasksRes.json();
       const tripsData = await tripsRes.json();
 
-      // รวมงาน assigned, picked_up, in_transit
+      // รวมงาน assigned, picked_up, in_transit + roundtrip statuses
       const allTasksRes = await fetch('/api/tasks?limit=50');
       const allData = await allTasksRes.json();
       const myTasks = (allData.tasks || []).filter((t: AssignedTask) =>
-        ['assigned', 'picked_up', 'in_transit'].includes(t.Status)
+        ['assigned', 'picked_up', 'in_transit', 'return_picked_up', 'returning'].includes(t.Status)
       );
       setTasks(myTasks);
       setActiveTrip(tripsData.length > 0 ? tripsData[0] : null);
@@ -133,14 +133,18 @@ export default function MessengerPage() {
     }
   };
 
-  const getNextAction = (status: TaskStatus) => {
+  const getNextAction = (status: TaskStatus, taskType?: string) => {
     switch (status) {
       case 'assigned':
-        return { label: 'รับเอกสาร', status: 'picked_up', icon: <Package size={16} />, color: 'from-purple-500 to-purple-600' };
+        return { label: 'รับเอกสาร', status: 'picked_up', icon: <Package size={16} />, color: 'from-purple-500 to-purple-600', isPOD: false };
       case 'picked_up':
-        return { label: 'ออกเดินทาง', status: 'in_transit', icon: <Bike size={16} />, color: 'from-blue-500 to-blue-600' };
+        return { label: 'ออกเดินทาง', status: 'in_transit', icon: <Bike size={16} />, color: 'from-blue-500 to-blue-600', isPOD: false };
       case 'in_transit':
-        return { label: 'ส่งสำเร็จ', status: 'completed', icon: <CheckCircle size={16} />, color: 'from-emerald-500 to-emerald-600' };
+        return { label: 'ส่งสำเร็จ', status: 'completed', icon: <CheckCircle size={16} />, color: 'from-emerald-500 to-emerald-600', isPOD: true };
+      case 'return_picked_up':
+        return { label: 'ออกเดินทางกลับ', status: 'returning', icon: <Bike size={16} />, color: 'from-cyan-500 to-cyan-600', isPOD: false };
+      case 'returning':
+        return { label: 'คืนเอกสารสำเร็จ', status: 'returned', icon: <CheckCircle size={16} />, color: 'from-teal-500 to-teal-600', isPOD: false };
       default:
         return null;
     }
@@ -222,7 +226,7 @@ export default function MessengerPage() {
           <div className="space-y-3">
             {tasks.map((task) => {
               const statusConf = STATUS_CONFIG[task.Status];
-              const nextAction = getNextAction(task.Status);
+              const nextAction = getNextAction(task.Status, task.TaskType);
 
               return (
                 <div key={task.Id}
@@ -289,7 +293,7 @@ export default function MessengerPage() {
 
                       {/* Next Action */}
                       {nextAction && (
-                        task.Status === 'in_transit' ? (
+                        nextAction.isPOD ? (
                           <Link href={`/messenger/deliver/${task.Id}`}
                             className={`flex-1 py-2.5 rounded-xl text-xs font-semibold text-white
                                         bg-gradient-to-r ${nextAction.color}

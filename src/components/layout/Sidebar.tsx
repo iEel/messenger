@@ -30,11 +30,11 @@ interface NavItem {
   roles?: string[];
 }
 
-const navItems: NavItem[] = [
-  { label: 'แดชบอร์ด', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+const navItems: (NavItem & { exact?: boolean })[] = [
+  { label: 'แดชบอร์ด', href: '/dashboard', icon: <LayoutDashboard size={20} />, exact: true },
   { label: 'สร้างใบงาน', href: '/tasks/new', icon: <FileText size={20} />, roles: ['requester', 'admin'] },
-  { label: 'งานของฉัน', href: '/tasks', icon: <ClipboardList size={20} />, roles: ['requester', 'admin'] },
-  { label: 'จ่ายงาน', href: '/dispatcher', icon: <Truck size={20} />, roles: ['dispatcher', 'admin'] },
+  { label: 'งานของฉัน', href: '/tasks', icon: <ClipboardList size={20} />, roles: ['requester', 'admin'], exact: true },
+  { label: 'จ่ายงาน', href: '/dispatcher', icon: <Truck size={20} />, roles: ['dispatcher', 'admin'], exact: true },
   { label: 'รายงาน', href: '/dispatcher/analytics', icon: <BarChart3 size={20} />, roles: ['dispatcher', 'admin'] },
   { label: 'จัดการผู้ใช้', href: '/admin/users', icon: <Users size={20} />, roles: ['admin'] },
   { label: 'ตั้งค่าระบบ', href: '/admin/settings', icon: <Settings size={20} />, roles: ['admin'] },
@@ -53,9 +53,9 @@ export default function Sidebar() {
     (item) => !item.roles || item.roles.includes(userRole)
   );
 
-  const isActive = (href: string) => {
-    if (href === '/dashboard') return pathname === '/dashboard';
-    return pathname.startsWith(href);
+  const isActive = (item: (typeof navItems)[number]) => {
+    if (item.exact) return pathname === item.href;
+    return pathname.startsWith(item.href);
   };
 
   const SidebarContent = () => (
@@ -85,16 +85,16 @@ export default function Sidebar() {
             onClick={() => setMobileOpen(false)}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
                          transition-all duration-200 group relative
-                         ${isActive(item.href)
+                         ${isActive(item)
                            ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 shadow-sm'
                            : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 hover:text-surface-800 dark:hover:text-white'
                          }`}
           >
-            <span className={`shrink-0 ${isActive(item.href) ? 'text-primary-600 dark:text-primary-400' : ''}`}>
+            <span className={`shrink-0 ${isActive(item) ? 'text-primary-600 dark:text-primary-400' : ''}`}>
               {item.icon}
             </span>
             {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
-            {isActive(item.href) && (
+            {isActive(item) && (
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-600 rounded-r-full" />
             )}
             {collapsed && (

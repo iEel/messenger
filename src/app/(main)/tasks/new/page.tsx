@@ -23,6 +23,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
+import PhoneInput from '@/components/ui/PhoneInput';
 
 export default function CreateTaskPage() {
   const router = useRouter();
@@ -93,6 +94,18 @@ export default function CreateTaskPage() {
     if (!form.recipientName || !form.documentDesc || !form.address) {
       setError('กรุณากรอกข้อมูลที่จำเป็น: ชื่อผู้รับ, รายละเอียดเอกสาร, ที่อยู่');
       return;
+    }
+
+    // Validate phone if entered
+    if (form.recipientPhone) {
+      const digits = form.recipientPhone.replace(/\D/g, '');
+      const isBkk = digits.startsWith('02');
+      const isProvincial = /^0[3-5,7]/.test(digits);
+      const expectedLen = (isBkk || isProvincial) ? 9 : 10;
+      if (digits.length !== expectedLen || !digits.startsWith('0')) {
+        setError('เบอร์โทรผู้รับไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -177,17 +190,10 @@ export default function CreateTaskPage() {
                              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all" />
               </div>
             </div>
-            <div>
-              <label htmlFor="recipientPhone" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">เบอร์โทรผู้รับ</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-surface-400"><Phone size={16} /></div>
-                <input id="recipientPhone" name="recipientPhone" value={form.recipientPhone} onChange={handleChange}
-                  placeholder="08x-xxx-xxxx"
-                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-surface-200 dark:border-surface-700
-                             bg-white dark:bg-surface-800 text-surface-800 dark:text-white text-sm placeholder:text-surface-400
-                             focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all" />
-              </div>
-            </div>
+            <PhoneInput
+              value={form.recipientPhone}
+              onChange={(val) => { setForm(prev => ({ ...prev, recipientPhone: val })); setError(''); }}
+            />
             <div className="sm:col-span-2">
               <label htmlFor="recipientCompany" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">บริษัท/องค์กร</label>
               <div className="relative">

@@ -115,12 +115,13 @@ d:\Antigravity\messenger\
 │   │   │   ├── dashboard/             ← Dashboard
 │   │   │   ├── tasks/                 ← รายการ/สร้าง/รายละเอียดใบงาน
 │   │   │   ├── tasks/[id]/edit/       ← ★ แก้ไขใบงาน
-│   │   │   ├── dispatcher/            ← จ่ายงาน + รายงาน
+│   │   │   ├── dispatcher/            ← จ่ายงาน + รายงาน + ระยะทาง
 │   │   │   └── messenger/             ← Hub แมส + ส่งเอกสาร + แจ้งปัญหา
 │   │   ├── api/
 │   │   │   ├── auth/[...nextauth]/    ← NextAuth handler
 │   │   │   ├── analytics/             ← API รายงาน
 │   │   │   ├── distance/              ← ★ API คำนวณระยะทาง
+│   │   │   ├── maps-resolve/          ← ★ Resolve short URL (goo.gl)
 │   │   │   ├── messengers/            ← ดึงรายชื่อแมส
 │   │   │   ├── settings/              ← ★ API ตั้งค่าระบบ (GET/PATCH)
 │   │   │   ├── tasks/                 ← CRUD ใบงาน (GET/POST/PATCH/PUT)
@@ -253,10 +254,11 @@ erDiagram
 | PATCH | `/api/tasks/[id]` | อัปเดตสถานะ / assign / cancel |
 | PUT | `/api/tasks/[id]` | ★ แก้ไขข้อมูลใบงาน (เฉพาะ status=new, owner/admin) |
 
-### 6.4 Distance
+### 6.4 Distance & Maps
 | Method | Path | คำอธิบาย |
 |--------|------|----------|
 | GET | `/api/distance` | ★ คำนวณระยะทาง (`?taskId=` หรือ `?fromLat=&fromLng=&toLat=&toLng=`) |
+| GET | `/api/maps-resolve` | ★ Resolve short URL → ดึง lat/lng (`?url=https://maps.app.goo.gl/xxx`) |
 
 ### 6.5 Settings
 | Method | Path | คำอธิบาย |
@@ -309,6 +311,7 @@ cancelled                         issue → return / reschedule
 ### Phase 2 — Requester
 - ฟอร์มสร้างใบงาน + auto TaskNumber (MSG-YYYYMM-XXXX)
 - **Address Autocomplete** (ที่อยู่ไทย 7,436 ตำบล ครบ 77 จังหวัด)
+- ★ **Google Maps short URL support** — วาง `maps.app.goo.gl/xxx` ดึงพิกัดอัตโนมัติ (API resolve)
 - ★ **Phone Input Validation** — auto-format `0XX-XXX-XXXX`, block ตัวอักษร, real-time validation (เขียว/เหลือง/แดง), ปุ่มโทรเช็ค
 - รายการใบงาน + ค้นหา/กรอง/pagination
 - หน้ารายละเอียดใบงาน + status timeline
@@ -319,12 +322,15 @@ cancelled                         issue → return / reschedule
 ### Phase 3 — Dispatcher
 - กระดานจ่ายงาน + assign modal
 - แจ้งเตือนด่วน (กระพริบแดง `.issue-flash`)
+- ★ **ปุ่มดูแผนที่** 📍 บนการ์ด — เปิด Google Maps (two_wheeler)
+- ★ **แสดงระยะทาง** (km) จากออฟฟิศบนการ์ดใบงาน (Haversine)
+- ★ **Zone toggle จำค่า** — localStorage persist เมื่อสลับหน้า
 - **รายงานจาก DB จริง** (6 stat cards, donut chart, bar chart 7 วัน, leaderboard)
 
 ### Phase 4 — Messenger
 - จัดการรอบวิ่ง (Start/End Trip) + live timer
 - Progressive status buttons (assigned → picked_up → in_transit)
-- ปุ่มนำทาง Google Maps (two-wheeler)
+- ปุ่มนำทาง Google Maps (**two_wheeler** — มอเตอร์ไซค์)
 - Click-to-call ผู้รับ
 - แจ้งปัญหาหน้างาน (4 ประเภท)
 - **Proof of Delivery** — ถ่ายรูป (max 3) + เซ็นชื่อ Canvas + ชื่อผู้รับจริง

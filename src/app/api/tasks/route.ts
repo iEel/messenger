@@ -10,17 +10,18 @@ async function generateTaskNumber(): Promise<string> {
   const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   // หาเลขล่าสุดของเดือนนี้
-  const result = await query<{ MaxNum: string }[]>(
-    `SELECT TOP 1 TaskNumber FROM Tasks 
+  const result = await query<{ MaxNum: string | null }[]>(
+    `SELECT TOP 1 TaskNumber AS MaxNum FROM Tasks 
      WHERE TaskNumber LIKE @pattern 
      ORDER BY TaskNumber DESC`,
     { pattern: `${prefix}-${yearMonth}-%` }
   );
 
   let seq = 1;
-  if (result.length > 0) {
+  if (result.length > 0 && result[0].MaxNum) {
     const lastNum = result[0].MaxNum;
-    const lastSeq = parseInt(lastNum.split('-')[2]) || 0;
+    const parts = lastNum.split('-');
+    const lastSeq = parts.length >= 3 ? parseInt(parts[2]) || 0 : 0;
     seq = lastSeq + 1;
   }
 

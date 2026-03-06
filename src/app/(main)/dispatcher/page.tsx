@@ -1,0 +1,359 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import {
+  Truck,
+  Search,
+  Filter,
+  UserCheck,
+  Eye,
+  MapPin,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  ArrowRightLeft,
+  Loader2,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  BarChart3,
+} from 'lucide-react';
+import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
+
+interface TaskItem {
+  Id: number;
+  TaskNumber: string;
+  RecipientName: string;
+  RecipientCompany: string | null;
+  TaskType: string;
+  DocumentDesc: string;
+  District: string | null;
+  Address: string;
+  Status: TaskStatus;
+  Priority: string;
+  ScheduledDate: string | null;
+  CreatedAt: string;
+  RequesterName: string;
+  MessengerName: string | null;
+  AssignedTo: number | null;
+}
+
+interface Messenger {
+  Id: number;
+  FullName: string;
+  EmployeeId: string;
+  Phone: string | null;
+}
+
+export default function DispatcherPage() {
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [messengers, setMessengers] = useState<Messenger[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
+  const [assignModal, setAssignModal] = useState<TaskItem | null>(null);
+  const [selectedMessenger, setSelectedMessenger] = useState<number | null>(null);
+  const [assigning, setAssigning] = useState(false);
+
+  const fetchTasks = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: '20',
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(search && { search }),
+      });
+      const res = await fetch(`/api/tasks?${params}`);
+      const data = await res.json();
+      setTasks(data.tasks || []);
+      setTotal(data.total || 0);
+    } catch (error) {
+      console.error('Fetch tasks error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [page, statusFilter, search]);
+
+  useEffect(() => {
+    fetchTasks();
+    fetchMessengers();
+  }, [fetchTasks]);
+
+  const fetchMessengers = async () => {
+    try {
+      const res = await fetch('/api/messengers');
+      const data = await res.json();
+      setMessengers(data);
+    } catch (error) {
+      console.error('Fetch messengers error:', error);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!assignModal || !selectedMessenger) return;
+    setAssigning(true);
+    try {
+      const res = await fetch(`/api/tasks/${assignModal.Id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignedTo: selectedMessenger,
+          status: 'assigned',
+          notes: `จ่ายงานให้ ${messengers.find(m => m.Id === selectedMessenger)?.FullName}`,
+        }),
+      });
+      if (res.ok) {
+        setAssignModal(null);
+        setSelectedMessenger(null);
+        fetchTasks();
+      }
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  // นับงานแต่ละสถานะ
+  const statusCounts = tasks.reduce((acc, task) => {
+    acc[task.Status] = (acc[task.Status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const totalPages = Math.ceil(total / 20);
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+            <Truck size={22} className="text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-surface-800 dark:text-white">กระดานจ่ายงาน</h1>
+            <p className="text-sm text-surface-500 dark:text-surface-400">{total} ใบงานทั้งหมด</p>
+          </div>
+        </div>
+        <Link href="/dispatcher/analytics"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
+                     text-surface-600 dark:text-surface-400 border border-surface-200 dark:border-surface-700
+                     hover:bg-surface-100 dark:hover:bg-surface-800 transition-all">
+          <BarChart3 size={16} /> รายงาน
+        </Link>
+      </div>
+
+      {/* Status Summary */}
+      <div className="flex gap-2 flex-wrap">
+        {Object.entries(STATUS_CONFIG).slice(0, 6).map(([key, conf]) => (
+          <button key={key}
+            onClick={() => { setStatusFilter(statusFilter === key ? 'all' : key); setPage(1); }}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium 
+                         transition-all duration-200 cursor-pointer border
+                         ${statusFilter === key
+                           ? 'shadow-sm scale-105'
+                           : 'opacity-70 hover:opacity-100'}`}
+            style={{
+              backgroundColor: statusFilter === key ? conf.bgColor : 'transparent',
+              color: conf.color,
+              borderColor: conf.bgColor,
+            }}>
+            {conf.icon} {conf.labelTh}
+            {statusCounts[key] > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                style={{ backgroundColor: conf.color, color: '#fff' }}>
+                {statusCounts[key]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400" />
+          <input type="text" placeholder="ค้นหาเลขใบงาน, ผู้รับ, ที่อยู่..." value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
+                       bg-white dark:bg-surface-800 text-surface-800 dark:text-white placeholder:text-surface-400 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all" />
+        </div>
+      </div>
+
+      {/* Tasks */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-3 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+            <p className="text-sm text-surface-500">กำลังโหลด...</p>
+          </div>
+        </div>
+      ) : tasks.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-surface-400">
+          <Truck size={48} className="mb-3 opacity-30" />
+          <p className="font-medium">ไม่มีใบงาน</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {tasks.map((task) => {
+            const statusConf = STATUS_CONFIG[task.Status];
+            return (
+              <div key={task.Id}
+                className={`bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
+                            shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
+                            transition-all duration-200 overflow-hidden
+                            ${task.Status === 'issue' ? 'issue-flash border-red-300 dark:border-red-700' : ''}`}>
+                {/* Status Bar */}
+                <div className="h-1.5" style={{ backgroundColor: statusConf?.color }} />
+
+                <div className="p-4">
+                  {/* Top */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <span className="font-bold text-sm font-mono text-surface-800 dark:text-white">{task.TaskNumber}</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
+                          style={{ backgroundColor: statusConf?.bgColor, color: statusConf?.color }}>
+                          {statusConf?.icon} {statusConf?.labelTh}
+                        </span>
+                        {task.Priority === 'urgent' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700">
+                            <AlertTriangle size={10} /> ด่วน
+                          </span>
+                        )}
+                        {task.TaskType === 'roundtrip' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
+                            <ArrowRightLeft size={10} />
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Link href={`/tasks/${task.Id}`}
+                      className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-primary-500 transition-colors">
+                      <Eye size={16} />
+                    </Link>
+                  </div>
+
+                  {/* Content */}
+                  <p className="text-sm text-surface-700 dark:text-surface-300 line-clamp-2 mb-2">{task.DocumentDesc}</p>
+                  <div className="space-y-1 text-xs text-surface-500 dark:text-surface-400">
+                    <p className="flex items-center gap-1.5">
+                      <UserCheck size={13} /> {task.RecipientName}
+                      {task.RecipientCompany && <span className="text-surface-400">({task.RecipientCompany})</span>}
+                    </p>
+                    <p className="flex items-center gap-1.5 truncate">
+                      <MapPin size={13} /> {task.District || task.Address}
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <Clock size={13} /> {new Date(task.CreatedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
+                    </p>
+                  </div>
+
+                  {/* Messenger or Assign Button */}
+                  <div className="mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">
+                    {task.MessengerName ? (
+                      <p className="text-xs text-surface-500 flex items-center gap-1.5">
+                        🏍️ <span className="font-medium text-surface-700 dark:text-surface-300">{task.MessengerName}</span>
+                      </p>
+                    ) : task.Status === 'new' ? (
+                      <button onClick={() => { setAssignModal(task); setSelectedMessenger(null); }}
+                        className="w-full py-2 rounded-lg text-xs font-semibold text-primary-600 dark:text-primary-400
+                                   bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100
+                                   transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                        <UserCheck size={14} /> จ่ายงาน
+                      </button>
+                    ) : (
+                      <p className="text-xs text-surface-400">ยังไม่มีแมส</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-surface-500">หน้า {page} จาก {totalPages}</p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}
+              className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed">
+              <ChevronLeft size={18} />
+            </button>
+            <button onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}
+              className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed">
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Modal */}
+      {assignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setAssignModal(null)} />
+          <div className="relative bg-white dark:bg-surface-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 animate-fade-in">
+            <button onClick={() => setAssignModal(null)}
+              className="absolute top-4 right-4 p-1 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 cursor-pointer">
+              <X size={18} className="text-surface-400" />
+            </button>
+
+            <h3 className="text-lg font-bold text-surface-800 dark:text-white mb-1">จ่ายงาน</h3>
+            <p className="text-sm text-surface-500 mb-4">
+              {assignModal.TaskNumber} → {assignModal.RecipientName}
+            </p>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {messengers.length === 0 ? (
+                <p className="text-sm text-surface-400 text-center py-4">ไม่มีแมสเซ็นเจอร์ในระบบ</p>
+              ) : (
+                messengers.map((m) => (
+                  <button key={m.Id}
+                    onClick={() => setSelectedMessenger(m.Id)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer text-left
+                      ${selectedMessenger === m.Id
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                        : 'border-surface-200 dark:border-surface-700 hover:border-surface-300'}`}>
+                    <div className="w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                      🏍️
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-surface-800 dark:text-white">{m.FullName}</p>
+                      <p className="text-xs text-surface-500">{m.EmployeeId}{m.Phone ? ` • ${m.Phone}` : ''}</p>
+                    </div>
+                    {selectedMessenger === m.Id && (
+                      <CheckCircle size={18} className="ml-auto text-primary-500" />
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-4 pt-4 border-t border-surface-200 dark:border-surface-700">
+              <button onClick={() => setAssignModal(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-surface-600 dark:text-surface-400
+                           hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors cursor-pointer">
+                ยกเลิก
+              </button>
+              <button onClick={handleAssign} disabled={!selectedMessenger || assigning}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white
+                           bg-gradient-to-r from-primary-600 to-primary-700
+                           hover:from-primary-700 hover:to-primary-800
+                           disabled:opacity-50 disabled:cursor-not-allowed
+                           shadow-lg shadow-primary-500/25 transition-all cursor-pointer
+                           flex items-center justify-center gap-2">
+                {assigning ? <Loader2 size={16} className="animate-spin" /> : <UserCheck size={16} />}
+                จ่ายงาน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

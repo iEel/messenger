@@ -1,0 +1,19 @@
+import { NextResponse } from 'next/server';
+import { query } from '@/lib/db';
+
+// GET - ดึงรายชื่อแมสเซ็นเจอร์ที่ active
+export async function GET() {
+  try {
+    const messengers = await query<{ Id: number; FullName: string; EmployeeId: string; Phone: string | null }[]>(
+      `SELECT Id, FullName, EmployeeId, Phone 
+       FROM Users 
+       WHERE Role = 'messenger' AND IsActive = 1 
+       ORDER BY FullName`
+    );
+
+    return NextResponse.json(messengers);
+  } catch (error) {
+    console.error('GET /api/messengers error:', error);
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาด' }, { status: 500 });
+  }
+}

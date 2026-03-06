@@ -56,13 +56,12 @@ export default function CreateTaskPage() {
 
   // ดึง lat/lng จาก Google Maps URL
   const extractCoordsFromUrl = (url: string) => {
-    // รูปแบบ: https://maps.google.com/?q=13.7563,100.5018
-    // หรือ: https://www.google.com/maps/@13.7563,100.5018,17z
-    // หรือ: https://goo.gl/maps/xxxxx
     const patterns = [
       /@(-?\d+\.\d+),(-?\d+\.\d+)/,
       /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
       /place\/.*\/@(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /destination=(-?\d+\.\d+),(-?\d+\.\d+)/,
     ];
 
     for (const pattern of patterns) {
@@ -74,14 +73,41 @@ export default function CreateTaskPage() {
     return null;
   };
 
-  const handleMapsUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ตรวจสอบว่าเป็น short URL หรือไม่
+  const isShortUrl = (url: string) => {
+    return /goo\.gl|maps\.app\.goo/.test(url);
+  };
+
+  const [resolvingUrl, setResolvingUrl] = useState(false);
+
+  const handleMapsUrlChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value;
     setForm(prev => ({ ...prev, googleMapsUrl: url }));
 
-    if (url) {
-      const coords = extractCoordsFromUrl(url);
-      if (coords) {
-        setForm(prev => ({ ...prev, googleMapsUrl: url, latitude: coords.lat, longitude: coords.lng }));
+    if (!url) return;
+
+    // ลองดึงพิกัดจาก URL ตรงๆ ก่อน
+    const coords = extractCoordsFromUrl(url);
+    if (coords) {
+      setForm(prev => ({ ...prev, googleMapsUrl: url, latitude: coords.lat, longitude: coords.lng }));
+      return;
+    }
+
+    // ถ้าเป็น short URL → resolve ผ่าน API
+    if (isShortUrl(url)) {
+      setResolvingUrl(true);
+      try {
+        const res = await fetch(`/api/maps-resolve?url=${encodeURIComponent(url)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.lat && data.lng) {
+            setForm(prev => ({ ...prev, googleMapsUrl: url, latitude: data.lat, longitude: data.lng }));
+          }
+        }
+      } catch (error) {
+        console.error('Resolve short URL error:', error);
+      } finally {
+        setResolvingUrl(false);
       }
     }
   };
@@ -372,11 +398,16 @@ export default function CreateTaskPage() {
                 <Map size={16} /> ลิงก์ Google Maps <span className="text-xs font-normal text-surface-400">(วางลิงก์เพื่อดึงพิกัดอัตโนมัติ)</span>
               </label>
               <input id="googleMapsUrl" name="googleMapsUrl" value={form.googleMapsUrl} onChange={handleMapsUrlChange}
-                placeholder="https://maps.google.com/..."
+                placeholder="https://maps.google.com/... หรือ https://maps.app.goo.gl/..."
                 className="w-full px-4 py-3 rounded-xl border border-surface-200 dark:border-surface-700
                            bg-white dark:bg-surface-800 text-surface-800 dark:text-white text-sm placeholder:text-surface-400
                            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all" />
-              {form.latitude && form.longitude && (
+              {resolvingUrl && (
+                <p className="mt-2 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                  <Loader2 size={14} className="animate-spin" /> กำลังดึงพิกัดจาก short URL...
+                </p>
+              )}
+              {!resolvingUrl && form.latitude && form.longitude && (
                 <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <CheckCircle size={14} /> พิกัด: {form.latitude}, {form.longitude}
                 </p>

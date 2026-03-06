@@ -18,6 +18,8 @@ import {
   CalendarClock,
   AlertCircle,
   Loader2,
+  Route,
+  Timer,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
 
@@ -56,6 +58,14 @@ interface HistoryEntry {
   CreatedAt: string;
 }
 
+interface DistanceInfo {
+  distanceKm: number;
+  durationMinutes: number;
+  distanceText: string;
+  durationText: string;
+  source: 'google' | 'haversine';
+}
+
 export default function TaskDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -65,6 +75,8 @@ export default function TaskDetailPage() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [distance, setDistance] = useState<DistanceInfo | null>(null);
+  const [distanceLoading, setDistanceLoading] = useState(false);
 
   useEffect(() => {
     fetchTask();
@@ -77,10 +89,30 @@ export default function TaskDetailPage() {
       const data = await res.json();
       setTask(data.task);
       setHistory(data.history);
+
+      // Auto-fetch distance if task has coordinates
+      if (data.task?.Latitude && data.task?.Longitude) {
+        fetchDistance(data.task.Id);
+      }
     } catch {
       // task not found
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchDistance = async (id: number) => {
+    setDistanceLoading(true);
+    try {
+      const res = await fetch(`/api/distance?taskId=${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDistance(data);
+      }
+    } catch (error) {
+      console.error('Distance fetch error:', error);
+    } finally {
+      setDistanceLoading(false);
     }
   };
 
@@ -212,21 +244,50 @@ export default function TaskDetailPage() {
             </div>
           </div>
 
-          {/* ที่อยู่ */}
+          {/* ที่อยู่ + ระยะทาง */}
           <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 shadow-[var(--shadow-card)] p-5">
             <h3 className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-3">📍 ที่อยู่ปลายทาง</h3>
             <p className="text-surface-800 dark:text-white">{task.Address}</p>
             <p className="text-sm text-surface-500 mt-1">
               {[task.SubDistrict, task.District, task.Province, task.PostalCode].filter(Boolean).join(', ')}
             </p>
-            {(task.Latitude && task.Longitude) && (
-              <a href={`https://www.google.com/maps/search/?api=1&query=${task.Latitude},${task.Longitude}`}
-                target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-lg bg-primary-50 dark:bg-primary-900/20 
-                           text-primary-600 dark:text-primary-400 text-sm font-medium hover:bg-primary-100 transition-colors">
-                <Navigation size={16} /> เปิดแผนที่
-              </a>
+
+            {/* Distance Info */}
+            {(distance || distanceLoading) && (
+              <div className="mt-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                {distanceLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <Loader2 size={14} className="animate-spin" /> คำนวณระยะทาง...
+                  </div>
+                ) : distance && (
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-blue-700 dark:text-blue-300">
+                      <Route size={16} />
+                      <span>{distance.distanceText}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400">
+                      <Timer size={14} />
+                      <span>~{distance.durationText}</span>
+                    </div>
+                    <span className="text-[10px] text-blue-400 ml-auto">
+                      {distance.source === 'google' ? '📡 Google Maps' : '📐 ประมาณ'}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
+
+            {/* Map Link */}
+            <div className="flex gap-2 mt-3">
+              {(task.Latitude && task.Longitude) && (
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=driving`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-50 dark:bg-primary-900/20 
+                             text-primary-600 dark:text-primary-400 text-sm font-medium hover:bg-primary-100 transition-colors">
+                  <Navigation size={16} /> นำทาง
+                </a>
+              )}
+            </div>
           </div>
         </div>
 
@@ -273,6 +334,12 @@ export default function TaskDetailPage() {
                 <div className="flex justify-between">
                   <span>แมสเซ็นเจอร์</span>
                   <span className="text-surface-700 dark:text-surface-300">{task.MessengerName}</span>
+                </div>
+              )}
+              {distance && (
+                <div className="flex justify-between">
+                  <span>ระยะทาง</span>
+                  <span className="text-surface-700 dark:text-surface-300">{distance.distanceText}</span>
                 </div>
               )}
               {task.CompletedAt && (

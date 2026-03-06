@@ -15,7 +15,7 @@ Web Application สำหรับจัดการการส่ง/รับ
 | **Requester** | พนักงานทั่วไป สร้างใบงานส่งเอกสาร | `/tasks`, `/tasks/new` |
 | **Dispatcher** | หัวหน้าแมส จ่ายงาน+ติดตาม | `/dispatcher`, `/dispatcher/analytics` |
 | **Messenger** | แมสเซ็นเจอร์ รับงาน+วิ่งส่ง | `/messenger`, `/messenger/deliver/[id]` |
-| **Admin** | ดูแลระบบ จัดการ User | `/admin/users` |
+| **Admin** | ดูแลระบบ จัดการ User + ตั้งค่า | `/admin/users`, `/admin/settings` |
 
 ---
 
@@ -82,8 +82,8 @@ PORT=3000
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=<random-secret>
 
-# Google Maps (ยังไม่ได้ใช้)
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+# Google Maps (ใช้คำนวณระยะทาง + Autocomplete)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=<your-api-key>
 
 # Outlook 365 (ยังไม่ได้ implement)
 OUTLOOK_CLIENT_ID=
@@ -111,15 +111,19 @@ d:\Antigravity\messenger\
 │   │   ├── (auth)/login/              ← หน้า Login
 │   │   ├── (main)/                    ← Layout มี Sidebar
 │   │   │   ├── admin/users/           ← CRUD ผู้ใช้
+│   │   │   ├── admin/settings/        ← ★ ตั้งค่าระบบ (พิกัดออฟฟิศ, prefix)
 │   │   │   ├── dashboard/             ← Dashboard
 │   │   │   ├── tasks/                 ← รายการ/สร้าง/รายละเอียดใบงาน
+│   │   │   ├── tasks/[id]/edit/       ← ★ แก้ไขใบงาน
 │   │   │   ├── dispatcher/            ← จ่ายงาน + รายงาน
 │   │   │   └── messenger/             ← Hub แมส + ส่งเอกสาร + แจ้งปัญหา
 │   │   ├── api/
 │   │   │   ├── auth/[...nextauth]/    ← NextAuth handler
 │   │   │   ├── analytics/             ← API รายงาน
+│   │   │   ├── distance/              ← ★ API คำนวณระยะทาง
 │   │   │   ├── messengers/            ← ดึงรายชื่อแมส
-│   │   │   ├── tasks/                 ← CRUD ใบงาน
+│   │   │   ├── settings/              ← ★ API ตั้งค่าระบบ (GET/PATCH)
+│   │   │   ├── tasks/                 ← CRUD ใบงาน (GET/POST/PATCH/PUT)
 │   │   │   ├── trips/                 ← เริ่ม/จบรอบวิ่ง
 │   │   │   └── users/                 ← CRUD ผู้ใช้
 │   │   ├── globals.css
@@ -129,6 +133,7 @@ d:\Antigravity\messenger\
 │   ├── components/
 │   │   ├── layout/Sidebar.tsx         ← Sidebar (role-based nav)
 │   │   ├── ui/AddressAutocomplete.tsx ← ค้นหาที่อยู่ไทย
+│   │   ├── ui/PhoneInput.tsx          ← ★ เบอร์โทรไทย (mask + validation)
 │   │   ├── ui/SignaturePad.tsx        ← Canvas เซ็นชื่อ
 │   │   ├── Providers.tsx              ← SessionProvider wrapper
 │   │   └── ThemeProvider.tsx          ← Dark/Light mode
@@ -136,6 +141,8 @@ d:\Antigravity\messenger\
 │   └── lib/
 │       ├── auth.ts                    ← NextAuth config
 │       ├── db.ts                      ← SQL Server connection
+│       ├── distance.ts                ← ★ Google Maps + Haversine
+│       ├── email.ts                   ← Email templates
 │       ├── types.ts                   ← TypeScript types + STATUS_CONFIG
 │       └── thailand-address.ts        ← ที่อยู่ไทย 7,436 ตำบล
 │
@@ -181,7 +188,7 @@ erDiagram
         nvarchar TaskType "oneway|roundtrip"
         nvarchar DocumentDesc
         nvarchar Address
-        nvarchar Status "new|assigned|picked_up|in_transit|completed|issue"
+        nvarchar Status "new|assigned|picked_up|in_transit|completed|issue|cancelled|..."
         nvarchar Priority "normal|urgent"
     }
 
@@ -216,7 +223,8 @@ erDiagram
     }
 ```
 
-> **หมายเหตุ:** ตาราง `TripWaypoints`, `Notifications`, `SystemSettings` มีอยู่ใน schema แต่ยังไม่ได้ใช้งานจริงในโค้ด
+> **หมายเหตุ:** ตาราง `TripWaypoints`, `Notifications` มีอยู่ใน schema แต่ยังไม่ได้ใช้งานจริงในโค้ด  
+> ตาราง `SystemSettings` ใช้งานแล้ว — เก็บ office_lat, office_lng, task_number_prefix ฯลฯ
 
 ---
 
@@ -242,16 +250,28 @@ erDiagram
 | GET | `/api/tasks` | รายการใบงาน (`?status=`, `?search=`, `?page=`, `?limit=`) |
 | POST | `/api/tasks` | สร้างใบงานใหม่ (auto-generate TaskNumber) |
 | GET | `/api/tasks/[id]` | รายละเอียดใบงาน + status history |
-| PATCH | `/api/tasks/[id]` | อัปเดตสถานะ / assign แมส |
+| PATCH | `/api/tasks/[id]` | อัปเดตสถานะ / assign / cancel |
+| PUT | `/api/tasks/[id]` | ★ แก้ไขข้อมูลใบงาน (เฉพาะ status=new, owner/admin) |
 
-### 6.4 Trips
+### 6.4 Distance
+| Method | Path | คำอธิบาย |
+|--------|------|----------|
+| GET | `/api/distance` | ★ คำนวณระยะทาง (`?taskId=` หรือ `?fromLat=&fromLng=&toLat=&toLng=`) |
+
+### 6.5 Settings
+| Method | Path | คำอธิบาย |
+|--------|------|----------|
+| GET | `/api/settings` | ★ ดึงค่าตั้งค่าทั้งหมด |
+| PATCH | `/api/settings` | ★ อัปเดตค่าตั้งค่า (admin only, MERGE upsert) |
+
+### 6.6 Trips
 | Method | Path | คำอธิบาย |
 |--------|------|----------|
 | GET | `/api/trips` | รอบวิ่งของแมส (`?status=active`) |
 | POST | `/api/trips` | เริ่มรอบวิ่งใหม่ |
 | PATCH | `/api/trips/[id]` | จบรอบวิ่ง |
 
-### 6.5 Analytics
+### 6.7 Analytics
 | Method | Path | คำอธิบาย |
 |--------|------|----------|
 | GET | `/api/analytics` | สถิติวันนี้, 7 วันย้อนหลัง, Top 5 แมส |
@@ -262,18 +282,19 @@ erDiagram
 
 ```
 new → assigned → picked_up → in_transit → completed
-                                    ↓
-                                  issue → return / reschedule
+ ↓                                  ↓
+cancelled                         issue → return / reschedule
 ```
 
 | Status | คำอธิบาย | ใครเปลี่ยน |
 |--------|----------|-----------|
-| `new` | ใบงานใหม่ รอจ่ายงาน | สร้างอัตโนมัติ |
+| `new` | ใบงานใหม่ รอจ่ายงาน (แก้ไข/ยกเลิกได้) | สร้างอัตโนมัติ |
 | `assigned` | จ่ายงานแล้ว | Dispatcher |
 | `picked_up` | แมสรับเอกสารแล้ว | Messenger |
 | `in_transit` | กำลังเดินทางส่ง | Messenger |
 | `completed` | ส่งสำเร็จ (ต้อง POD) | Messenger |
 | `issue` | มีปัญหา | Messenger |
+| `cancelled` | ★ ยกเลิกใบงาน | Requester/Admin |
 
 ---
 
@@ -288,8 +309,11 @@ new → assigned → picked_up → in_transit → completed
 ### Phase 2 — Requester
 - ฟอร์มสร้างใบงาน + auto TaskNumber (MSG-YYYYMM-XXXX)
 - **Address Autocomplete** (ที่อยู่ไทย 7,436 ตำบล ครบ 77 จังหวัด)
+- ★ **Phone Input Validation** — auto-format `0XX-XXX-XXXX`, block ตัวอักษร, real-time validation (เขียว/เหลือง/แดง), ปุ่มโทรเช็ค
 - รายการใบงาน + ค้นหา/กรอง/pagination
 - หน้ารายละเอียดใบงาน + status timeline
+- ★ **แก้ไขใบงาน** — หน้า edit (เฉพาะ status=new, owner/admin)
+- ★ **ยกเลิกใบงาน** — confirm dialog → status=cancelled + บันทึกประวัติ
 - Action Center สำหรับงานที่มีปัญหา (คืน/เลื่อน)
 
 ### Phase 3 — Dispatcher
@@ -305,6 +329,17 @@ new → assigned → picked_up → in_transit → completed
 - แจ้งปัญหาหน้างาน (4 ประเภท)
 - **Proof of Delivery** — ถ่ายรูป (max 3) + เซ็นชื่อ Canvas + ชื่อผู้รับจริง
 
+### Phase 5 — ระบบสนับสนุน ★ (ใหม่)
+- ★ **คำนวณระยะทาง** — Google Maps Directions API + Haversine fallback
+  - API endpoint `/api/distance` (office→task หรือ custom coords)
+  - แสดงระยะทาง+เวลาเดินทาง auto ในหน้ารายละเอียดใบงาน
+  - ระบุแหล่งข้อมูล (📡 Google Maps / 📐 ประมาณ)
+- ★ **หน้าตั้งค่าระบบ** (`/admin/settings`) — admin only
+  - จัดกลุ่ม: พิกัดออฟฟิศ (lat/lng/ชื่อ), คำนำหน้าเลขใบงาน
+  - ปุ่มดูตำแหน่งบน Google Maps
+  - ตารางแสดง raw settings ทั้งหมด
+  - API `/api/settings` (GET/PATCH with MERGE upsert)
+
 ---
 
 ## 9. สิ่งที่ยังไม่ได้ทำ ❌ (เรียงตามความสำคัญ)
@@ -314,25 +349,23 @@ new → assigned → picked_up → in_transit → completed
 | # | ฟีเจอร์ | รายละเอียด | ตารางที่เกี่ยวข้อง |
 |---|---------|-----------|-------------------|
 | 1 | **File Upload จริง (POD)** | ถ่ายรูป+เซ็นชื่อ ตอนนี้ยังไม่ได้ save ไฟล์จริงลง server มีแค่ UI (ส่ง base64 ไป API) ต้อง implement upload API + save ลง `ProofOfDelivery` table | `ProofOfDelivery` |
-| 2 | **งานไป-กลับ (Roundtrip) Flow สมบูรณ์** | แมสต้องรับเอกสารกลับ → ส่งคืนออฟฟิศ status: `return_picked_up` → `returning` → `returned` | `Tasks`, `TaskStatusHistory` |
-| 3 | **อีเมลแจ้งเตือน** | ใช้ Outlook 365 OAuth / Nodemailer ส่งเมลเมื่อมีงานใหม่, Issue alert, สรุปรายวัน | `Notifications` |
 
 ### 🟡 สำคัญปานกลาง
 
 | # | ฟีเจอร์ | รายละเอียด |
 |---|---------|-----------|
-| 4 | **Zone Clustering** | จัดกลุ่มงานตามเขต/พื้นที่ ช่วยจ่ายงานอย่างมีประสิทธิภาพ |
-| 5 | **Real-time Update** | ใช้ polling ทุก 30 วินาที หรือ WebSocket ให้แดชบอร์ด Dispatcher update อัตโนมัติ |
-| 6 | **Export CSV/Excel** | ส่งออกรายงาน (ใช้ `xlsx` หรือ `csv-stringify`) |
+| 2 | **Real-time Update** | ใช้ polling ทุก 30 วินาที หรือ WebSocket ให้แดชบอร์ด Dispatcher update อัตโนมัติ |
+| 3 | **Export CSV/Excel** | ส่งออกรายงาน (ใช้ `xlsx` หรือ `csv-stringify`) |
 
 ### 🟢 ภายหลัง
 
 | # | ฟีเจอร์ | รายละเอียด |
 |---|---------|-----------|
-| 7 | **คำนวณระยะทาง** | Google Maps Routes API (mode: TWO_WHEELER) ต้องสมัคร API Key |
-| 8 | **PWA + Offline** | `manifest.json` + Service Worker + ใช้ `next-pwa` package |
-| 9 | **Reusable UI Components** | แยก Button, Modal, Table, Badge เป็น component กลาง ใน `components/ui/` |
-| 10 | **Map Picker** | Maps JavaScript API ปักหมุดเลือกพิกัดบนแผนที่ |
+| 4 | **PWA + Offline** | `manifest.json` + Service Worker + ใช้ `next-pwa` package |
+| 5 | **Reusable UI Components** | แยก Button, Modal, Table, Badge เป็น component กลาง ใน `components/ui/` |
+| 6 | **Map Picker** | Maps JavaScript API ปักหมุดเลือกพิกัดบนแผนที่ |
+
+> **หมายเหตุ:** ฟีเจอร์ที่ย้ายไป ✅ แล้ว: คำนวณระยะทาง, อีเมลแจ้งเตือน, Zone Clustering (basic), งานไป-กลับ Flow
 
 ---
 

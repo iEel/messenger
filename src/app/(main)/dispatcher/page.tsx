@@ -19,6 +19,7 @@ import {
   BarChart3,
   Layers,
   List,
+  Navigation,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
 
@@ -38,6 +39,8 @@ interface TaskItem {
   RequesterName: string;
   MessengerName: string | null;
   AssignedTo: number | null;
+  Latitude: number | null;
+  Longitude: number | null;
 }
 
 interface Messenger {
@@ -178,10 +181,21 @@ export default function DispatcherPage() {
                 )}
               </div>
             </div>
-            <Link href={`/tasks/${task.Id}`}
-              className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-primary-500 transition-colors">
-              <Eye size={16} />
-            </Link>
+            <div className="flex items-center gap-1">
+              {task.Latitude && task.Longitude && (
+                <a href={`https://www.google.com/maps?q=${task.Latitude},${task.Longitude}`}
+                  target="_blank" rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-surface-400 hover:text-blue-500 transition-colors"
+                  title="ดูแผนที่">
+                  <Navigation size={16} />
+                </a>
+              )}
+              <Link href={`/tasks/${task.Id}`}
+                className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-primary-500 transition-colors">
+                <Eye size={16} />
+              </Link>
+            </div>
           </div>
 
           <p className="text-sm text-surface-700 dark:text-surface-300 line-clamp-2 mb-2">{task.DocumentDesc}</p>

@@ -58,7 +58,12 @@ export default function DispatcherPage() {
   const [assignModal, setAssignModal] = useState<TaskItem | null>(null);
   const [selectedMessenger, setSelectedMessenger] = useState<number | null>(null);
   const [assigning, setAssigning] = useState(false);
-  const [groupByZone, setGroupByZone] = useState(false);
+  const [groupByZone, setGroupByZone] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dispatcher_groupByZone') === 'true';
+    }
+    return false;
+  });
 
   const fetchTasks = useCallback(async () => {
     setIsLoading(true);
@@ -229,7 +234,7 @@ export default function DispatcherPage() {
         </div>
         <div className="flex items-center gap-2">
           {/* Zone Toggle */}
-          <button onClick={() => setGroupByZone(!groupByZone)}
+          <button onClick={() => { const next = !groupByZone; setGroupByZone(next); localStorage.setItem('dispatcher_groupByZone', String(next)); }}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
                          border transition-all cursor-pointer
                          ${groupByZone

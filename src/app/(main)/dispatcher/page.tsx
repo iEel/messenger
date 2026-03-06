@@ -183,8 +183,8 @@ export default function DispatcherPage() {
               </div>
             </div>
             <div className="flex items-center gap-1">
-              {(task.GoogleMapsUrl || (task.Latitude && task.Longitude)) && (
-                <a href={task.GoogleMapsUrl || `https://www.google.com/maps?q=${task.Latitude},${task.Longitude}`}
+              {task.Latitude && task.Longitude && (
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=driving`}
                   target="_blank" rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                   className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-surface-400 hover:text-blue-500 transition-colors"

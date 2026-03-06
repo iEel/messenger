@@ -55,13 +55,14 @@ export default function CreateTaskPage() {
   };
 
   // ดึง lat/lng จาก Google Maps URL
+  // IMPORTANT: !3d...!4d... = actual pin, @lat,lng = viewport (less accurate)
   const extractCoordsFromUrl = (url: string) => {
     const patterns = [
-      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
       /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
-      /place\/.*\/@(-?\d+\.\d+),(-?\d+\.\d+)/,
       /ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
       /destination=(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
     ];
 
     for (const pattern of patterns) {

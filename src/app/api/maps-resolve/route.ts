@@ -18,20 +18,21 @@ export async function GET(request: NextRequest) {
     const finalUrl = res.url;
 
     // Extract coordinates from the resolved URL
-    const patterns = [
-      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
-      /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/,
-      /place\/.*\/@(-?\d+\.\d+),(-?\d+\.\d+)/,
-      /ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
-      /destination=(-?\d+\.\d+),(-?\d+\.\d+)/,
+    // IMPORTANT: !3d...!4d... = actual pin coords, @lat,lng = viewport (less accurate)
+    const patterns: { regex: RegExp; latGroup: number; lngGroup: number }[] = [
+      { regex: /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, latGroup: 1, lngGroup: 2 },
+      { regex: /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/, latGroup: 1, lngGroup: 2 },
+      { regex: /ll=(-?\d+\.\d+),(-?\d+\.\d+)/, latGroup: 1, lngGroup: 2 },
+      { regex: /destination=(-?\d+\.\d+),(-?\d+\.\d+)/, latGroup: 1, lngGroup: 2 },
+      { regex: /@(-?\d+\.\d+),(-?\d+\.\d+)/, latGroup: 1, lngGroup: 2 },
     ];
 
-    for (const pattern of patterns) {
-      const match = finalUrl.match(pattern);
+    for (const { regex, latGroup, lngGroup } of patterns) {
+      const match = finalUrl.match(regex);
       if (match) {
         return NextResponse.json({
-          lat: match[1],
-          lng: match[2],
+          lat: match[latGroup],
+          lng: match[lngGroup],
           resolvedUrl: finalUrl,
         });
       }
@@ -41,12 +42,12 @@ export async function GET(request: NextRequest) {
     const bodyRes = await fetch(url, { redirect: 'follow' });
     const html = await bodyRes.text();
 
-    for (const pattern of patterns) {
-      const match = html.match(pattern);
+    for (const { regex, latGroup, lngGroup } of patterns) {
+      const match = html.match(regex);
       if (match) {
         return NextResponse.json({
-          lat: match[1],
-          lng: match[2],
+          lat: match[latGroup],
+          lng: match[lngGroup],
           resolvedUrl: bodyRes.url,
         });
       }

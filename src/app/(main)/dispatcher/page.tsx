@@ -102,8 +102,13 @@ export default function DispatcherPage() {
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
-      const lat = parseFloat(data.settings?.office_lat);
-      const lng = parseFloat(data.settings?.office_lng);
+      // API returns array: [{SettingKey, SettingValue}, ...]
+      const settings: Record<string, string> = {};
+      if (Array.isArray(data)) {
+        data.forEach((s: { SettingKey: string; SettingValue: string }) => { settings[s.SettingKey] = s.SettingValue; });
+      }
+      const lat = parseFloat(settings['office_lat']);
+      const lng = parseFloat(settings['office_lng']);
       if (lat && lng) setOfficeCoords({ lat, lng });
     } catch { /* ignore */ }
   };

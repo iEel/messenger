@@ -19,6 +19,69 @@ import {
   Loader2,
 } from 'lucide-react';
 
+// ⚠️ ต้องประกาศข้างนอก component หลัก เพื่อไม่ให้ React สร้างใหม่ทุก render
+function InputField({
+  icon,
+  label,
+  name,
+  type = 'text',
+  placeholder,
+  required = false,
+  value,
+  onChange,
+  showPassword,
+  onTogglePassword,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  name: string;
+  type?: string;
+  placeholder: string;
+  required?: boolean;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  showPassword?: boolean;
+  onTogglePassword?: () => void;
+}) {
+  const isPasswordField = name === 'password' || name === 'confirmPassword';
+  return (
+    <div>
+      <label htmlFor={name} className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-surface-400">
+          {icon}
+        </div>
+        <input
+          id={name}
+          type={isPasswordField ? (showPassword ? 'text' : 'password') : type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={required}
+          className="w-full pl-11 pr-4 py-3 rounded-xl border border-surface-200 dark:border-surface-700
+                     bg-white dark:bg-surface-800 text-surface-800 dark:text-white
+                     placeholder:text-surface-400 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                     transition-all duration-200"
+        />
+        {isPasswordField && onTogglePassword && (
+          <button
+            type="button"
+            onClick={onTogglePassword}
+            className="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-surface-400 
+                       hover:text-surface-600 dark:hover:text-surface-300"
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CreateUserPage() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -95,59 +158,6 @@ export default function CreateUserPage() {
     }
   };
 
-  const InputField = ({
-    icon,
-    label,
-    name,
-    type = 'text',
-    placeholder,
-    required = false,
-    value,
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    name: string;
-    type?: string;
-    placeholder: string;
-    required?: boolean;
-    value: string;
-  }) => (
-    <div>
-      <label htmlFor={name} className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-surface-400">
-          {icon}
-        </div>
-        <input
-          id={name}
-          type={name === 'password' || name === 'confirmPassword' ? (showPassword ? 'text' : 'password') : type}
-          name={name}
-          value={value}
-          onChange={handleChange}
-          placeholder={placeholder}
-          required={required}
-          className="w-full pl-11 pr-4 py-3 rounded-xl border border-surface-200 dark:border-surface-700
-                     bg-white dark:bg-surface-800 text-surface-800 dark:text-white
-                     placeholder:text-surface-400 text-sm
-                     focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-                     transition-all duration-200"
-        />
-        {(name === 'password' || name === 'confirmPassword') && (
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer text-surface-400 
-                       hover:text-surface-600 dark:hover:text-surface-300"
-          >
-            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
@@ -195,8 +205,8 @@ export default function CreateUserPage() {
               ข้อมูลพื้นฐาน
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InputField icon={<User size={16} />} label="รหัสพนักงาน" name="employeeId" placeholder="เช่น EMP001" required value={form.employeeId} />
-              <InputField icon={<User size={16} />} label="ชื่อ-สกุล" name="fullName" placeholder="ชื่อ นามสกุล" required value={form.fullName} />
+              <InputField icon={<User size={16} />} label="รหัสพนักงาน" name="employeeId" placeholder="เช่น EMP001" required value={form.employeeId} onChange={handleChange} />
+              <InputField icon={<User size={16} />} label="ชื่อ-สกุล" name="fullName" placeholder="ชื่อ นามสกุล" required value={form.fullName} onChange={handleChange} />
             </div>
           </div>
 
@@ -206,8 +216,8 @@ export default function CreateUserPage() {
               ข้อมูลติดต่อ
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InputField icon={<Mail size={16} />} label="อีเมล" name="email" type="email" placeholder="email@company.com" value={form.email} />
-              <InputField icon={<Phone size={16} />} label="เบอร์โทร" name="phone" placeholder="08x-xxx-xxxx" value={form.phone} />
+              <InputField icon={<Mail size={16} />} label="อีเมล" name="email" type="email" placeholder="email@company.com" value={form.email} onChange={handleChange} />
+              <InputField icon={<Phone size={16} />} label="เบอร์โทร" name="phone" placeholder="08x-xxx-xxxx" value={form.phone} onChange={handleChange} />
             </div>
           </div>
 
@@ -242,7 +252,7 @@ export default function CreateUserPage() {
                   </select>
                 </div>
               </div>
-              <InputField icon={<Building size={16} />} label="แผนก" name="department" placeholder="เช่น บัญชี, การเงิน" value={form.department} />
+              <InputField icon={<Building size={16} />} label="แผนก" name="department" placeholder="เช่น บัญชี, การเงิน" value={form.department} onChange={handleChange} />
             </div>
           </div>
 
@@ -252,8 +262,8 @@ export default function CreateUserPage() {
               รหัสผ่าน
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InputField icon={<Lock size={16} />} label="รหัสผ่าน" name="password" placeholder="อย่างน้อย 6 ตัวอักษร" required value={form.password} />
-              <InputField icon={<Lock size={16} />} label="ยืนยันรหัสผ่าน" name="confirmPassword" placeholder="กรอกรหัสผ่านอีกครั้ง" required value={form.confirmPassword} />
+              <InputField icon={<Lock size={16} />} label="รหัสผ่าน" name="password" placeholder="อย่างน้อย 6 ตัวอักษร" required value={form.password} onChange={handleChange} showPassword={showPassword} onTogglePassword={() => setShowPassword(!showPassword)} />
+              <InputField icon={<Lock size={16} />} label="ยืนยันรหัสผ่าน" name="confirmPassword" placeholder="กรอกรหัสผ่านอีกครั้ง" required value={form.confirmPassword} onChange={handleChange} showPassword={showPassword} onTogglePassword={() => setShowPassword(!showPassword)} />
             </div>
             <p className="mt-2 text-xs text-surface-400">
               🔒 รหัสผ่านจะถูกเข้ารหัสด้วย bcrypt ก่อนบันทึกลงฐานข้อมูล

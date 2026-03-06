@@ -289,14 +289,24 @@ export default function MessengerPage() {
 
                       {/* Next Action */}
                       {nextAction && (
-                        <button
-                          onClick={() => handleUpdateStatus(task.Id, nextAction.status, nextAction.label)}
-                          className={`flex-1 py-2.5 rounded-xl text-xs font-semibold text-white
-                                      bg-gradient-to-r ${nextAction.color}
-                                      shadow-md hover:shadow-lg
-                                      flex items-center justify-center gap-1.5 transition-all cursor-pointer`}>
-                          {nextAction.icon} {nextAction.label}
-                        </button>
+                        task.Status === 'in_transit' ? (
+                          <Link href={`/messenger/deliver/${task.Id}`}
+                            className={`flex-1 py-2.5 rounded-xl text-xs font-semibold text-white
+                                        bg-gradient-to-r ${nextAction.color}
+                                        shadow-md hover:shadow-lg
+                                        flex items-center justify-center gap-1.5 transition-all`}>
+                            {nextAction.icon} {nextAction.label}
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() => handleUpdateStatus(task.Id, nextAction.status, nextAction.label)}
+                            className={`flex-1 py-2.5 rounded-xl text-xs font-semibold text-white
+                                        bg-gradient-to-r ${nextAction.color}
+                                        shadow-md hover:shadow-lg
+                                        flex items-center justify-center gap-1.5 transition-all cursor-pointer`}>
+                            {nextAction.icon} {nextAction.label}
+                          </button>
+                        )
                       )}
 
                       {/* Report Issue */}

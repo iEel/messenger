@@ -1,0 +1,242 @@
+// ข้อมูลที่อยู่ไทย — ตัวอย่างหลักกรุงเทพฯ และจังหวัดหลัก
+// สามารถเพิ่มเติมข้อมูลได้จาก: https://github.com/earthchie/jquery.Thailand.js/
+export interface ThaiAddress {
+  subDistrict: string;     // ตำบล/แขวง
+  district: string;        // อำเภอ/เขต
+  province: string;        // จังหวัด
+  postalCode: string;      // รหัสไปรษณีย์
+}
+
+const data: ThaiAddress[] = [
+  // กรุงเทพมหานคร
+  { subDistrict: "พระบรมมหาราชวัง", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "วังบูรพาภิรมย์", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "วัดราชบพิธ", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "สำราญราษฎร์", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "ศาลเจ้าพ่อเสือ", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "เสาชิงช้า", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "บวรนิเวศ", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "ตลาดยอด", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "ชนะสงคราม", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "บ้านพานถม", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "บางขุนพรหม", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "วัดสามพระยา", district: "พระนคร", province: "กรุงเทพมหานคร", postalCode: "10200" },
+  { subDistrict: "ดุสิต", district: "ดุสิต", province: "กรุงเทพมหานคร", postalCode: "10300" },
+  { subDistrict: "วชิรพยาบาล", district: "ดุสิต", province: "กรุงเทพมหานคร", postalCode: "10300" },
+  { subDistrict: "สวนจิตรลดา", district: "ดุสิต", province: "กรุงเทพมหานคร", postalCode: "10300" },
+  { subDistrict: "สี่แยกมหานาค", district: "ดุสิต", province: "กรุงเทพมหานคร", postalCode: "10300" },
+  { subDistrict: "ถนนนครไชยศรี", district: "ดุสิต", province: "กรุงเทพมหานคร", postalCode: "10300" },
+  { subDistrict: "กลุ่มหลักสองสี่", district: "หนองแขม", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "หนองแขม", district: "หนองแขม", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "หนองค้างพลู", district: "หนองแขม", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "คลองขวาง", district: "ภาษีเจริญ", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "ปากคลองภาษีเจริญ", district: "ภาษีเจริญ", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "คูหาสวรรค์", district: "ภาษีเจริญ", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "บางแวก", district: "ภาษีเจริญ", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "บางด้วน", district: "ภาษีเจริญ", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "บางจาก", district: "ภาษีเจริญ", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "สมเด็จเจ้าพระยา", district: "คลองสาน", province: "กรุงเทพมหานคร", postalCode: "10600" },
+  { subDistrict: "คลองสาน", district: "คลองสาน", province: "กรุงเทพมหานคร", postalCode: "10600" },
+  { subDistrict: "บางลำภูล่าง", district: "คลองสาน", province: "กรุงเทพมหานคร", postalCode: "10600" },
+  { subDistrict: "คลองต้นไทร", district: "คลองสาน", province: "กรุงเทพมหานคร", postalCode: "10600" },
+  { subDistrict: "สีลม", district: "บางรัก", province: "กรุงเทพมหานคร", postalCode: "10500" },
+  { subDistrict: "สุริยวงศ์", district: "บางรัก", province: "กรุงเทพมหานคร", postalCode: "10500" },
+  { subDistrict: "มหาพฤฒาราม", district: "บางรัก", province: "กรุงเทพมหานคร", postalCode: "10500" },
+  { subDistrict: "สี่พระยา", district: "บางรัก", province: "กรุงเทพมหานคร", postalCode: "10500" },
+  { subDistrict: "บางรัก", district: "บางรัก", province: "กรุงเทพมหานคร", postalCode: "10500" },
+  { subDistrict: "ปทุมวัน", district: "ปทุมวัน", province: "กรุงเทพมหานคร", postalCode: "10330" },
+  { subDistrict: "ลุมพินี", district: "ปทุมวัน", province: "กรุงเทพมหานคร", postalCode: "10330" },
+  { subDistrict: "รองเมือง", district: "ปทุมวัน", province: "กรุงเทพมหานคร", postalCode: "10330" },
+  { subDistrict: "วังใหม่", district: "ปทุมวัน", province: "กรุงเทพมหานคร", postalCode: "10330" },
+  { subDistrict: "ป้อมปราบ", district: "ป้อมปราบศัตรูพ่าย", province: "กรุงเทพมหานคร", postalCode: "10100" },
+  { subDistrict: "วัดเทพศิรินทร์", district: "ป้อมปราบศัตรูพ่าย", province: "กรุงเทพมหานคร", postalCode: "10100" },
+  { subDistrict: "คลองมหานาค", district: "ป้อมปราบศัตรูพ่าย", province: "กรุงเทพมหานคร", postalCode: "10100" },
+  { subDistrict: "บ้านบาตร", district: "ป้อมปราบศัตรูพ่าย", province: "กรุงเทพมหานคร", postalCode: "10100" },
+  { subDistrict: "วัดโสมนัส", district: "ป้อมปราบศัตรูพ่าย", province: "กรุงเทพมหานคร", postalCode: "10100" },
+  { subDistrict: "สัมพันธวงศ์", district: "สัมพันธวงศ์", province: "กรุงเทพมหานคร", postalCode: "10100" },
+  { subDistrict: "จักรวรรดิ", district: "สัมพันธวงศ์", province: "กรุงเทพมหานคร", postalCode: "10100" },
+  { subDistrict: "ตลาดน้อย", district: "สัมพันธวงศ์", province: "กรุงเทพมหานคร", postalCode: "10100" },
+  { subDistrict: "คลองเตย", district: "คลองเตย", province: "กรุงเทพมหานคร", postalCode: "10110" },
+  { subDistrict: "คลองตัน", district: "คลองเตย", province: "กรุงเทพมหานคร", postalCode: "10110" },
+  { subDistrict: "พระโขนง", district: "คลองเตย", province: "กรุงเทพมหานคร", postalCode: "10110" },
+  { subDistrict: "คลองเตยเหนือ", district: "วัฒนา", province: "กรุงเทพมหานคร", postalCode: "10110" },
+  { subDistrict: "คลองตันเหนือ", district: "วัฒนา", province: "กรุงเทพมหานคร", postalCode: "10110" },
+  { subDistrict: "พระโขนงเหนือ", district: "วัฒนา", province: "กรุงเทพมหานคร", postalCode: "10110" },
+  { subDistrict: "สวนหลวง", district: "สวนหลวง", province: "กรุงเทพมหานคร", postalCode: "10250" },
+  { subDistrict: "อ่อนนุช", district: "สวนหลวง", province: "กรุงเทพมหานคร", postalCode: "10250" },
+  { subDistrict: "พัฒนาการ", district: "สวนหลวง", province: "กรุงเทพมหานคร", postalCode: "10250" },
+  { subDistrict: "สะพานสูง", district: "สะพานสูง", province: "กรุงเทพมหานคร", postalCode: "10240" },
+  { subDistrict: "ราษฎร์พัฒนา", district: "สะพานสูง", province: "กรุงเทพมหานคร", postalCode: "10240" },
+  { subDistrict: "ทับช้าง", district: "สะพานสูง", province: "กรุงเทพมหานคร", postalCode: "10240" },
+  { subDistrict: "จตุจักร", district: "จตุจักร", province: "กรุงเทพมหานคร", postalCode: "10900" },
+  { subDistrict: "ลาดยาว", district: "จตุจักร", province: "กรุงเทพมหานคร", postalCode: "10900" },
+  { subDistrict: "เสนานิคม", district: "จตุจักร", province: "กรุงเทพมหานคร", postalCode: "10900" },
+  { subDistrict: "จอมพล", district: "จตุจักร", province: "กรุงเทพมหานคร", postalCode: "10900" },
+  { subDistrict: "จันทรเกษม", district: "จตุจักร", province: "กรุงเทพมหานคร", postalCode: "10900" },
+  { subDistrict: "ดินแดง", district: "ดินแดง", province: "กรุงเทพมหานคร", postalCode: "10400" },
+  { subDistrict: "รัชดาภิเษก", district: "ดินแดง", province: "กรุงเทพมหานคร", postalCode: "10400" },
+  { subDistrict: "ห้วยขวาง", district: "ห้วยขวาง", province: "กรุงเทพมหานคร", postalCode: "10310" },
+  { subDistrict: "บางกะปิ", district: "ห้วยขวาง", province: "กรุงเทพมหานคร", postalCode: "10310" },
+  { subDistrict: "สามเสนนอก", district: "ห้วยขวาง", province: "กรุงเทพมหานคร", postalCode: "10310" },
+  { subDistrict: "ลาดพร้าว", district: "ลาดพร้าว", province: "กรุงเทพมหานคร", postalCode: "10230" },
+  { subDistrict: "จรเข้บัว", district: "ลาดพร้าว", province: "กรุงเทพมหานคร", postalCode: "10230" },
+  { subDistrict: "คลองจั่น", district: "บางกะปิ", province: "กรุงเทพมหานคร", postalCode: "10240" },
+  { subDistrict: "หัวหมาก", district: "บางกะปิ", province: "กรุงเทพมหานคร", postalCode: "10240" },
+  { subDistrict: "วังทองหลาง", district: "วังทองหลาง", province: "กรุงเทพมหานคร", postalCode: "10310" },
+  { subDistrict: "สะพานสอง", district: "วังทองหลาง", province: "กรุงเทพมหานคร", postalCode: "10310" },
+  { subDistrict: "คลองเจ้าคุณสิงห์", district: "วังทองหลาง", province: "กรุงเทพมหานคร", postalCode: "10310" },
+  { subDistrict: "พลับพลา", district: "วังทองหลาง", province: "กรุงเทพมหานคร", postalCode: "10310" },
+  { subDistrict: "บางซื่อ", district: "บางซื่อ", province: "กรุงเทพมหานคร", postalCode: "10800" },
+  { subDistrict: "วงศ์สว่าง", district: "บางซื่อ", province: "กรุงเทพมหานคร", postalCode: "10800" },
+  { subDistrict: "บึงกุ่ม", district: "บึงกุ่ม", province: "กรุงเทพมหานคร", postalCode: "10230" },
+  { subDistrict: "คันนายาว", district: "คันนายาว", province: "กรุงเทพมหานคร", postalCode: "10230" },
+  { subDistrict: "สาทร", district: "สาทร", province: "กรุงเทพมหานคร", postalCode: "10120" },
+  { subDistrict: "ยานนาวา", district: "สาทร", province: "กรุงเทพมหานคร", postalCode: "10120" },
+  { subDistrict: "ทุ่งวัดดอน", district: "สาทร", province: "กรุงเทพมหานคร", postalCode: "10120" },
+  { subDistrict: "ทุ่งมหาเมฆ", district: "สาทร", province: "กรุงเทพมหานคร", postalCode: "10120" },
+  { subDistrict: "บางโพงพาง", district: "ยานนาวา", province: "กรุงเทพมหานคร", postalCode: "10120" },
+  { subDistrict: "ช่องนนทรี", district: "ยานนาวา", province: "กรุงเทพมหานคร", postalCode: "10120" },
+  { subDistrict: "บางคอแหลม", district: "บางคอแหลม", province: "กรุงเทพมหานคร", postalCode: "10120" },
+  { subDistrict: "วัดพระยาไกร", district: "บางคอแหลม", province: "กรุงเทพมหานคร", postalCode: "10120" },
+  { subDistrict: "บางโคล่", district: "บางคอแหลม", province: "กรุงเทพมหานคร", postalCode: "10120" },
+  { subDistrict: "บางนา", district: "บางนา", province: "กรุงเทพมหานคร", postalCode: "10260" },
+  { subDistrict: "บางนาเหนือ", district: "บางนา", province: "กรุงเทพมหานคร", postalCode: "10260" },
+  { subDistrict: "บางนาใต้", district: "บางนา", province: "กรุงเทพมหานคร", postalCode: "10260" },
+  { subDistrict: "พระโขนงใต้", district: "พระโขนง", province: "กรุงเทพมหานคร", postalCode: "10260" },
+  { subDistrict: "บางจาก", district: "พระโขนง", province: "กรุงเทพมหานคร", postalCode: "10260" },
+  { subDistrict: "บางบอน", district: "บางบอน", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "บางบอนเหนือ", district: "บางบอน", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "บางบอนใต้", district: "บางบอน", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "คลองบางพราน", district: "บางบอน", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "บางแค", district: "บางแค", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "บางแคเหนือ", district: "บางแค", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "บางไผ่", district: "บางแค", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "หลักสอง", district: "บางแค", province: "กรุงเทพมหานคร", postalCode: "10160" },
+  { subDistrict: "ทุ่งครุ", district: "ทุ่งครุ", province: "กรุงเทพมหานคร", postalCode: "10140" },
+  { subDistrict: "บางมด", district: "ทุ่งครุ", province: "กรุงเทพมหานคร", postalCode: "10140" },
+  { subDistrict: "ราษฎร์บูรณะ", district: "ราษฎร์บูรณะ", province: "กรุงเทพมหานคร", postalCode: "10140" },
+  { subDistrict: "บางปะกอก", district: "ราษฎร์บูรณะ", province: "กรุงเทพมหานคร", postalCode: "10140" },
+  { subDistrict: "จอมทอง", district: "จอมทอง", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "บางขุนเทียน", district: "จอมทอง", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "บางค้อ", district: "จอมทอง", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "บางมด", district: "จอมทอง", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "ทวีวัฒนา", district: "ทวีวัฒนา", province: "กรุงเทพมหานคร", postalCode: "10170" },
+  { subDistrict: "ศาลาธรรมสพน์", district: "ทวีวัฒนา", province: "กรุงเทพมหานคร", postalCode: "10170" },
+  { subDistrict: "ตลิ่งชัน", district: "ตลิ่งชัน", province: "กรุงเทพมหานคร", postalCode: "10170" },
+  { subDistrict: "ฉิมพลี", district: "ตลิ่งชัน", province: "กรุงเทพมหานคร", postalCode: "10170" },
+  { subDistrict: "บางพรม", district: "ตลิ่งชัน", province: "กรุงเทพมหานคร", postalCode: "10170" },
+  { subDistrict: "บางระมาด", district: "ตลิ่งชัน", province: "กรุงเทพมหานคร", postalCode: "10170" },
+  { subDistrict: "บางเชือกหนัง", district: "ตลิ่งชัน", province: "กรุงเทพมหานคร", postalCode: "10170" },
+  { subDistrict: "บางพลัด", district: "บางพลัด", province: "กรุงเทพมหานคร", postalCode: "10700" },
+  { subDistrict: "บางอ้อ", district: "บางพลัด", province: "กรุงเทพมหานคร", postalCode: "10700" },
+  { subDistrict: "บางบำหรุ", district: "บางพลัด", province: "กรุงเทพมหานคร", postalCode: "10700" },
+  { subDistrict: "บางยี่ขัน", district: "บางพลัด", province: "กรุงเทพมหานคร", postalCode: "10700" },
+  { subDistrict: "บางเขน", district: "บางเขน", province: "กรุงเทพมหานคร", postalCode: "10220" },
+  { subDistrict: "ท่าแร้ง", district: "บางเขน", province: "กรุงเทพมหานคร", postalCode: "10220" },
+  { subDistrict: "อนุสาวรีย์", district: "บางเขน", province: "กรุงเทพมหานคร", postalCode: "10220" },
+  { subDistrict: "สายไหม", district: "สายไหม", province: "กรุงเทพมหานคร", postalCode: "10220" },
+  { subDistrict: "ออเงิน", district: "สายไหม", province: "กรุงเทพมหานคร", postalCode: "10220" },
+  { subDistrict: "คลองถนน", district: "สายไหม", province: "กรุงเทพมหานคร", postalCode: "10220" },
+  { subDistrict: "ดอนเมือง", district: "ดอนเมือง", province: "กรุงเทพมหานคร", postalCode: "10210" },
+  { subDistrict: "สีกัน", district: "ดอนเมือง", province: "กรุงเทพมหานคร", postalCode: "10210" },
+  { subDistrict: "หลักสี่", district: "หลักสี่", province: "กรุงเทพมหานคร", postalCode: "10210" },
+  { subDistrict: "ทุ่งสองห้อง", district: "หลักสี่", province: "กรุงเทพมหานคร", postalCode: "10210" },
+  { subDistrict: "ทับยาว", district: "ลาดกระบัง", province: "กรุงเทพมหานคร", postalCode: "10520" },
+  { subDistrict: "ลาดกระบัง", district: "ลาดกระบัง", province: "กรุงเทพมหานคร", postalCode: "10520" },
+  { subDistrict: "คลองสองต้นนุ่น", district: "ลาดกระบัง", province: "กรุงเทพมหานคร", postalCode: "10520" },
+  { subDistrict: "คลองสามประเวศ", district: "ลาดกระบัง", province: "กรุงเทพมหานคร", postalCode: "10520" },
+  { subDistrict: "ลำปลาทิว", district: "ลาดกระบัง", province: "กรุงเทพมหานคร", postalCode: "10520" },
+  { subDistrict: "มีนบุรี", district: "มีนบุรี", province: "กรุงเทพมหานคร", postalCode: "10510" },
+  { subDistrict: "แสนแสบ", district: "มีนบุรี", province: "กรุงเทพมหานคร", postalCode: "10510" },
+  { subDistrict: "หนองจอก", district: "หนองจอก", province: "กรุงเทพมหานคร", postalCode: "10530" },
+  { subDistrict: "คลองสิบ", district: "หนองจอก", province: "กรุงเทพมหานคร", postalCode: "10530" },
+  { subDistrict: "คลองสิบสอง", district: "หนองจอก", province: "กรุงเทพมหานคร", postalCode: "10530" },
+  { subDistrict: "โคกแฝด", district: "หนองจอก", province: "กรุงเทพมหานคร", postalCode: "10530" },
+  { subDistrict: "คู้ฝั่งเหนือ", district: "หนองจอก", province: "กรุงเทพมหานคร", postalCode: "10530" },
+  { subDistrict: "ลำต้อยติ่ง", district: "หนองจอก", province: "กรุงเทพมหานคร", postalCode: "10530" },
+  { subDistrict: "ลำผักชี", district: "หนองจอก", province: "กรุงเทพมหานคร", postalCode: "10530" },
+  { subDistrict: "กระทุ่มราย", district: "หนองจอก", province: "กรุงเทพมหานคร", postalCode: "10530" },
+  { subDistrict: "ประเวศ", district: "ประเวศ", province: "กรุงเทพมหานคร", postalCode: "10250" },
+  { subDistrict: "หนองบอน", district: "ประเวศ", province: "กรุงเทพมหานคร", postalCode: "10250" },
+  { subDistrict: "ดอกไม้", district: "ประเวศ", province: "กรุงเทพมหานคร", postalCode: "10250" },
+  { subDistrict: "บางขุนเทียน", district: "บางขุนเทียน", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "แสมดำ", district: "บางขุนเทียน", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "ท่าข้าม", district: "บางขุนเทียน", province: "กรุงเทพมหานคร", postalCode: "10150" },
+  { subDistrict: "ราชทัวี", district: "ราชเทวี", province: "กรุงเทพมหานคร", postalCode: "10400" },
+  { subDistrict: "ทุ่งพญาไท", district: "ราชเทวี", province: "กรุงเทพมหานคร", postalCode: "10400" },
+  { subDistrict: "ถนนพญาไท", district: "ราชเทวี", province: "กรุงเทพมหานคร", postalCode: "10400" },
+  { subDistrict: "ถนนเพชรบุรี", district: "ราชเทวี", province: "กรุงเทพมหานคร", postalCode: "10400" },
+  { subDistrict: "มักกะสัน", district: "ราชเทวี", province: "กรุงเทพมหานคร", postalCode: "10400" },
+  { subDistrict: "พญาไท", district: "พญาไท", province: "กรุงเทพมหานคร", postalCode: "10400" },
+  { subDistrict: "สามเสนใน", district: "พญาไท", province: "กรุงเทพมหานคร", postalCode: "10400" },
+  // นนทบุรี
+  { subDistrict: "ตลาดขวัญ", district: "เมืองนนทบุรี", province: "นนทบุรี", postalCode: "11000" },
+  { subDistrict: "สวนใหญ่", district: "เมืองนนทบุรี", province: "นนทบุรี", postalCode: "11000" },
+  { subDistrict: "บางเขน", district: "เมืองนนทบุรี", province: "นนทบุรี", postalCode: "11000" },
+  { subDistrict: "บางกระสอ", district: "เมืองนนทบุรี", province: "นนทบุรี", postalCode: "11000" },
+  { subDistrict: "ท่าทราย", district: "เมืองนนทบุรี", province: "นนทบุรี", postalCode: "11000" },
+  { subDistrict: "บางศรีเมือง", district: "เมืองนนทบุรี", province: "นนทบุรี", postalCode: "11000" },
+  { subDistrict: "บางใหญ่", district: "บางใหญ่", province: "นนทบุรี", postalCode: "11140" },
+  { subDistrict: "บางแม่นาง", district: "บางใหญ่", province: "นนทบุรี", postalCode: "11140" },
+  { subDistrict: "เสาธงหิน", district: "บางใหญ่", province: "นนทบุรี", postalCode: "11140" },
+  { subDistrict: "ศาลากลาง", district: "บางกรวย", province: "นนทบุรี", postalCode: "11130" },
+  { subDistrict: "บางกรวย", district: "บางกรวย", province: "นนทบุรี", postalCode: "11130" },
+  { subDistrict: "บางบัวทอง", district: "บางบัวทอง", province: "นนทบุรี", postalCode: "11110" },
+  { subDistrict: "โสนลอย", district: "บางบัวทอง", province: "นนทบุรี", postalCode: "11110" },
+  { subDistrict: "บางรักใหญ่", district: "บางบัวทอง", province: "นนทบุรี", postalCode: "11110" },
+  { subDistrict: "ปากเกร็ด", district: "ปากเกร็ด", province: "นนทบุรี", postalCode: "11120" },
+  { subDistrict: "บางพูด", district: "ปากเกร็ด", province: "นนทบุรี", postalCode: "11120" },
+  { subDistrict: "บ้านใหม่", district: "ปากเกร็ด", province: "นนทบุรี", postalCode: "11120" },
+  { subDistrict: "คลองเกลือ", district: "ปากเกร็ด", province: "นนทบุรี", postalCode: "11120" },
+  // สมุทรปราการ
+  { subDistrict: "ปากน้ำ", district: "เมืองสมุทรปราการ", province: "สมุทรปราการ", postalCode: "10270" },
+  { subDistrict: "สำโรงเหนือ", district: "เมืองสมุทรปราการ", province: "สมุทรปราการ", postalCode: "10270" },
+  { subDistrict: "บางเมือง", district: "เมืองสมุทรปราการ", province: "สมุทรปราการ", postalCode: "10270" },
+  { subDistrict: "ท้ายบ้าน", district: "เมืองสมุทรปราการ", province: "สมุทรปราการ", postalCode: "10280" },
+  { subDistrict: "บางปู", district: "เมืองสมุทรปราการ", province: "สมุทรปราการ", postalCode: "10280" },
+  { subDistrict: "บางพลีใหญ่", district: "บางพลี", province: "สมุทรปราการ", postalCode: "10540" },
+  { subDistrict: "บางแก้ว", district: "บางพลี", province: "สมุทรปราการ", postalCode: "10540" },
+  { subDistrict: "ราชาเทวะ", district: "บางพลี", province: "สมุทรปราการ", postalCode: "10540" },
+  // ปทุมธานี
+  { subDistrict: "บางปรอก", district: "เมืองปทุมธานี", province: "ปทุมธานี", postalCode: "12000" },
+  { subDistrict: "บ้านใหม่", district: "เมืองปทุมธานี", province: "ปทุมธานี", postalCode: "12000" },
+  { subDistrict: "รังสิต", district: "ธัญบุรี", province: "ปทุมธานี", postalCode: "12110" },
+  { subDistrict: "ประชาธิปัตย์", district: "ธัญบุรี", province: "ปทุมธานี", postalCode: "12130" },
+  { subDistrict: "คลองหลวง", district: "คลองหลวง", province: "ปทุมธานี", postalCode: "12120" },
+  { subDistrict: "คลองหนึ่ง", district: "คลองหลวง", province: "ปทุมธานี", postalCode: "12120" },
+  { subDistrict: "คลองสอง", district: "คลองหลวง", province: "ปทุมธานี", postalCode: "12120" },
+  { subDistrict: "ลาดสวาย", district: "ลำลูกกา", province: "ปทุมธานี", postalCode: "12150" },
+  { subDistrict: "บึงคำพร้อย", district: "ลำลูกกา", province: "ปทุมธานี", postalCode: "12150" },
+];
+
+export default data;
+
+// Helper functions
+export function searchAddress(keyword: string, limit = 20): ThaiAddress[] {
+  if (!keyword || keyword.length < 2) return [];
+  const kw = keyword.toLowerCase();
+  return data.filter(
+    (d) =>
+      d.subDistrict.includes(kw) ||
+      d.district.includes(kw) ||
+      d.province.includes(kw) ||
+      d.postalCode.includes(kw)
+  ).slice(0, limit);
+}
+
+export function getProvinces(): string[] {
+  return [...new Set(data.map((d) => d.province))];
+}
+
+export function getDistricts(province: string): string[] {
+  return [...new Set(data.filter((d) => d.province === province).map((d) => d.district))];
+}
+
+export function getSubDistricts(province: string, district: string): string[] {
+  return [...new Set(data.filter((d) => d.province === province && d.district === district).map((d) => d.subDistrict))];
+}
+
+export function getPostalCode(province: string, district: string, subDistrict: string): string {
+  const found = data.find((d) => d.province === province && d.district === district && d.subDistrict === subDistrict);
+  return found?.postalCode || '';
+}

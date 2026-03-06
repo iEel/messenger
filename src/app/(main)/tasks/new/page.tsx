@@ -22,6 +22,7 @@ import {
   Calendar,
   AlertTriangle,
 } from 'lucide-react';
+import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
 
 export default function CreateTaskPage() {
   const router = useRouter();
@@ -312,6 +313,22 @@ export default function CreateTaskPage() {
                            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none" />
             </div>
 
+            {/* Address Autocomplete */}
+            <AddressAutocomplete
+              initialSubDistrict={form.subDistrict}
+              initialDistrict={form.district}
+              initialProvince={form.province}
+              initialPostalCode={form.postalCode}
+              onSelect={(addr) => setForm(prev => ({
+                ...prev,
+                subDistrict: addr.subDistrict,
+                district: addr.district,
+                province: addr.province,
+                postalCode: addr.postalCode,
+              }))}
+            />
+
+            {/* แสดงผลที่อยู่ที่เลือก (แก้ไขได้) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <label htmlFor="subDistrict" className="block text-xs font-medium text-surface-600 dark:text-surface-400 mb-1">แขวง/ตำบล</label>

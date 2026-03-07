@@ -254,9 +254,14 @@ async function sendEmailNotification(taskId: number, newStatus: string, notes?: 
         break;
       }
       case 'issue': {
+        const mail = emailIssueAlert(t.TaskNumber, notes || 'ไม่ระบุ', t.MessengerName || '-', notes || '');
+        // ส่งให้หัวหน้าแมสเซ็นเจอร์
         if (t.DispatcherEmails) {
-          const mail = emailIssueAlert(t.TaskNumber, notes || 'ไม่ระบุ', t.MessengerName || '-', notes || '');
           await sendMail({ to: t.DispatcherEmails, ...mail });
+        }
+        // ★ ส่งให้เจ้าของงาน (requester) ด้วย
+        if (t.RequesterEmail) {
+          await sendMail({ to: t.RequesterEmail, ...mail });
         }
         break;
       }

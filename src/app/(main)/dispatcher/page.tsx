@@ -18,6 +18,7 @@ import {
   ChevronRight,
   BarChart3,
   Layers,
+  Ban,
   List,
   Navigation,
   Route,
@@ -209,6 +210,22 @@ export default function DispatcherPage() {
     }
   };
 
+  // ★ ยกเลิกใบงาน
+  const handleCancelTask = async (task: TaskItem) => {
+    const confirmed = window.confirm(`ยืนยันยกเลิกใบงาน ${task.TaskNumber}?\nเอกสาร: ${task.DocumentDesc}\nผู้รับ: ${task.RecipientName}`);
+    if (!confirmed) return;
+    try {
+      const res = await fetch(`/api/tasks/${task.Id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled', notes: 'ยกเลิกโดยหัวหน้าแมสเซ็นเจอร์' }),
+      });
+      if (res.ok) fetchTasks();
+    } catch (error) {
+      console.error('Cancel error:', error);
+    }
+  };
+
   // นับงานแต่ละสถานะ
   const statusCounts = tasks.reduce((acc, task) => {
     acc[task.Status] = (acc[task.Status] || 0) + 1;
@@ -325,6 +342,19 @@ export default function DispatcherPage() {
               <p className="text-xs text-surface-400">ยังไม่มีแมสเซ็นเจอร์</p>
             )}
           </div>
+
+          {/* ★ ปุ่มยกเลิก (ทุกสถานะยกเว้น completed/returned/cancelled) */}
+          {!['completed', 'returned', 'cancelled'].includes(task.Status) && (
+            <div className="mt-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleCancelTask(task); }}
+                className="w-full py-1.5 rounded-lg text-xs font-medium text-red-500 dark:text-red-400
+                           hover:bg-red-50 dark:hover:bg-red-900/20
+                           transition-colors cursor-pointer flex items-center justify-center gap-1">
+                <Ban size={12} /> ยกเลิกใบงาน
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

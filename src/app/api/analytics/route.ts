@@ -46,13 +46,15 @@ export async function GET() {
       SELECT TOP 5
         u.FullName,
         COUNT(*) AS completed,
-        AVG(DATEDIFF(MINUTE, t.CreatedAt, 
-          (SELECT TOP 1 sh.ChangedAt FROM TaskStatusHistory sh 
-           WHERE sh.TaskId = t.Id AND sh.Status IN ('completed','returned') 
-           ORDER BY sh.ChangedAt DESC)
-        )) AS avgMinutes
+        AVG(completionMinutes.mins) AS avgMinutes
       FROM Tasks t
       JOIN Users u ON t.AssignedTo = u.Id
+      CROSS APPLY (
+        SELECT TOP 1 DATEDIFF(MINUTE, t.CreatedAt, sh.ChangedAt) AS mins
+        FROM TaskStatusHistory sh
+        WHERE sh.TaskId = t.Id AND sh.Status IN ('completed','returned')
+        ORDER BY sh.ChangedAt DESC
+      ) completionMinutes
       WHERE t.Status IN ('completed','returned')
         AND t.CreatedAt >= DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0)
       GROUP BY u.FullName

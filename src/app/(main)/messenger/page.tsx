@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   Play,
@@ -73,9 +73,48 @@ export default function MessengerPage() {
     }
   }, []);
 
+  // Silent fetch สำหรับ polling (ไม่แสดง loading spinner)
+  const fetchDataSilent = useCallback(async () => {
+    try {
+      const allTasksRes = await fetch('/api/tasks?limit=50');
+      const allData = await allTasksRes.json();
+      const myTasks = (allData.tasks || []).filter((t: AssignedTask) =>
+        ['assigned', 'picked_up', 'in_transit', 'return_picked_up', 'returning'].includes(t.Status)
+      );
+
+      const tripsRes = await fetch('/api/trips?status=active');
+      const tripsData = await tripsRes.json();
+
+      setTasks(myTasks);
+      setActiveTrip(tripsData.length > 0 ? tripsData[0] : null);
+    } catch (error) {
+      console.error('Silent fetch error:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Auto-refresh polling ทุก 30 วินาที
+  const [countdown, setCountdown] = useState(30);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setCountdown(30);
+    countdownRef.current = setInterval(() => {
+      setCountdown(prev => (prev <= 1 ? 30 : prev - 1));
+    }, 1000);
+    intervalRef.current = setInterval(() => {
+      fetchDataSilent();
+    }, 30000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [fetchDataSilent]);
 
   // Timer
   useEffect(() => {
@@ -214,6 +253,7 @@ export default function MessengerPage() {
       <div>
         <h2 className="text-lg font-bold text-surface-800 dark:text-white mb-3">
           📋 งานของฉัน ({tasks.length})
+          <span className="ml-2 text-xs font-normal text-surface-400">🔄 {countdown}s</span>
         </h2>
 
         {tasks.length === 0 ? (

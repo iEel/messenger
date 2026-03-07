@@ -1,30 +1,76 @@
 import nodemailer from 'nodemailer';
 
-// Outlook 365 OAuth2 / SMTP Config
-function createTransporter() {
-  // ถ้ามี OAuth2 credentials ใช้ OAuth2
-  if (process.env.OUTLOOK_CLIENT_ID && process.env.OUTLOOK_CLIENT_SECRET && process.env.OUTLOOK_TENANT_ID) {
+// =============================================
+// Azure AD OAuth2 — ขอ access token สำหรับ SMTP
+// =============================================
+async function getAzureAccessToken(): Promise<string | null> {
+  const tenantId = process.env.AZURE_TENANT_ID;
+  const clientId = process.env.AZURE_CLIENT_ID;
+  const clientSecret = process.env.AZURE_CLIENT_SECRET;
+
+  if (!tenantId || !clientId || !clientSecret) return null;
+
+  try {
+    const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+    const params = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: 'https://outlook.office365.com/.default',
+      grant_type: 'client_credentials',
+    });
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('[Email] Azure OAuth2 token error:', res.status, errText);
+      return null;
+    }
+
+    const data = await res.json();
+    return data.access_token || null;
+  } catch (error) {
+    console.error('[Email] Azure OAuth2 token fetch failed:', error);
+    return null;
+  }
+}
+
+// =============================================
+// สร้าง transporter ตามลำดับความสำคัญ
+// 1. Azure AD OAuth2 (primary)
+// 2. SMTP username/password (fallback)
+// =============================================
+async function createTransporter(): Promise<nodemailer.Transporter> {
+  const smtpUser = process.env.SMTP_USER;
+
+  // ขั้นที่ 1: Azure AD OAuth2
+  const accessToken = await getAzureAccessToken();
+  if (accessToken && smtpUser) {
+    console.log('[Email] Using Azure AD OAuth2 transport');
     return nodemailer.createTransport({
       host: 'smtp.office365.com',
       port: 587,
       secure: false,
       auth: {
         type: 'OAuth2',
-        user: process.env.OUTLOOK_SENDER_EMAIL,
-        clientId: process.env.OUTLOOK_CLIENT_ID,
-        clientSecret: process.env.OUTLOOK_CLIENT_SECRET,
-        tenantId: process.env.OUTLOOK_TENANT_ID,
+        user: smtpUser,
+        accessToken,
       },
     } as nodemailer.TransportOptions);
   }
 
-  // Fallback: SMTP ธรรมดา (สำหรับ development / mail server ภายใน)
+  // ขั้นที่ 2: Fallback SMTP (Outlook 365 / mail server ภายใน)
+  console.log('[Email] Using SMTP fallback transport');
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.office365.com',
     port: parseInt(process.env.SMTP_PORT || '587'),
     secure: false,
     auth: {
-      user: process.env.SMTP_USER || process.env.OUTLOOK_SENDER_EMAIL,
+      user: smtpUser,
       pass: process.env.SMTP_PASS,
     },
   });
@@ -38,13 +84,13 @@ interface SendMailOptions {
 
 export async function sendMail({ to, subject, html }: SendMailOptions): Promise<boolean> {
   try {
-    const from = process.env.OUTLOOK_SENDER_EMAIL || process.env.SMTP_USER;
+    const from = process.env.SMTP_USER;
     if (!from) {
-      console.warn('[Email] No sender email configured, skipping...');
+      console.warn('[Email] No SMTP_USER configured, skipping...');
       return false;
     }
 
-    const transporter = createTransporter();
+    const transporter = await createTransporter();
     await transporter.sendMail({
       from: `"ระบบแมสเซ็นเจอร์" <${from}>`,
       to,

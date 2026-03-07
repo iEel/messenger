@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Messenger Tracking System | ระบบติดตามเอกสาร",
   description: "ระบบบริหารจัดการแมสเซ็นเจอร์และติดตามเอกสารภายในองค์กร",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.png",
     apple: "/icons/icon-192.png",
   },
   manifest: "/manifest.json",

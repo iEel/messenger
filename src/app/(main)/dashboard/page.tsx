@@ -198,7 +198,7 @@ export default function DashboardPage() {
                           shadow-[var(--shadow-card)] p-5">
             <div className="flex items-center gap-2 mb-4">
               <Trophy size={18} className="text-amber-500" />
-              <h3 className="font-semibold text-surface-800 dark:text-white">Top แมส (เดือนนี้)</h3>
+              <h3 className="font-semibold text-surface-800 dark:text-white">Top แมสเซ็นเจอร์ (เดือนนี้)</h3>
             </div>
             {data.topMessengers.length === 0 ? (
               <p className="text-sm text-surface-400 text-center py-8">ยังไม่มีข้อมูล</p>

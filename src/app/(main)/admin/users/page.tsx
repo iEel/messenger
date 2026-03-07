@@ -128,7 +128,7 @@ export default function UsersListPage() {
             <option value="all">ทุกบทบาท</option>
             <option value="admin">ผู้ดูแลระบบ</option>
             <option value="requester">พนักงาน</option>
-            <option value="dispatcher">หัวหน้าแมส</option>
+            <option value="dispatcher">หัวหน้าแมสเซ็นเจอร์</option>
             <option value="messenger">แมสเซ็นเจอร์</option>
           </select>
         </div>

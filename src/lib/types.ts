@@ -107,7 +107,7 @@ export const STATUS_CONFIG: Record<TaskStatus, { label: string; labelTh: string;
 
 export const ROLE_CONFIG: Record<UserRole, { label: string; labelTh: string; color: string; bgColor: string }> = {
   requester:  { label: 'Requester',  labelTh: 'พนักงาน',      color: '#3B82F6', bgColor: '#DBEAFE' },
-  dispatcher: { label: 'Dispatcher', labelTh: 'หัวหน้าแมส',   color: '#8B5CF6', bgColor: '#EDE9FE' },
+  dispatcher: { label: 'Dispatcher', labelTh: 'หัวหน้าแมสเซ็นเจอร์',   color: '#8B5CF6', bgColor: '#EDE9FE' },
   messenger:  { label: 'Messenger',  labelTh: 'แมสเซ็นเจอร์', color: '#F97316', bgColor: '#FED7AA' },
   admin:      { label: 'Admin',      labelTh: 'ผู้ดูแลระบบ',  color: '#EF4444', bgColor: '#FEE2E2' },
 };

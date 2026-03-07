@@ -133,7 +133,7 @@ export default function Sidebar() {
                 </p>
                 <p className="text-xs text-surface-500 dark:text-surface-400 truncate">
                   {session.user.role === 'admin' ? 'ผู้ดูแลระบบ' : 
-                   session.user.role === 'dispatcher' ? 'หัวหน้าแมส' :
+                   session.user.role === 'dispatcher' ? 'หัวหน้าแมสเซ็นเจอร์' :
                    session.user.role === 'messenger' ? 'แมสเซ็นเจอร์' : 'พนักงาน'}
                 </p>
               </div>

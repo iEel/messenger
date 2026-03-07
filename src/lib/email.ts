@@ -119,7 +119,7 @@ export function emailIssueAlert(taskNumber: string, issueType: string, messenger
         <div style="background:#fef2f2;padding:20px;border:1px solid #fecaca;border-top:0;border-radius:0 0 16px 16px;">
           <table style="width:100%;font-size:14px;">
             <tr><td style="padding:6px 0;color:#6b7280;">ประเภท:</td><td style="font-weight:600;color:#dc2626;">${issueType}</td></tr>
-            <tr><td style="padding:6px 0;color:#6b7280;">แมส:</td><td>${messengerName}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">แมสเซ็นเจอร์:</td><td>${messengerName}</td></tr>
             ${description ? `<tr><td style="padding:6px 0;color:#6b7280;">รายละเอียด:</td><td>${description}</td></tr>` : ''}
           </table>
           <p style="margin:16px 0 0;font-size:13px;color:#9ca3af;">กรุณาตัดสินใจ (คืนเอกสาร / เลื่อนวันส่ง) ที่กระดานจ่ายงาน</p>
@@ -176,7 +176,7 @@ export function emailDocumentReturned(taskNumber: string, recipientName: string,
             <tr><td style="padding:6px 0;color:#6b7280;">เวลาคืน:</td><td>${new Date().toLocaleString('th-TH')}</td></tr>
             ${podSection}
           </table>
-          <p style="margin:16px 0 0;font-size:13px;color:#9ca3af;">คุณ ${requesterName} — แมสนำเอกสาร/เช็คมาวางคืนที่ออฟฟิศแล้ว</p>
+          <p style="margin:16px 0 0;font-size:13px;color:#9ca3af;">คุณ ${requesterName} — แมสเซ็นเจอร์นำเอกสาร/เช็คมาวางคืนที่ออฟฟิศแล้ว</p>
         </div>
       </div>
     `,

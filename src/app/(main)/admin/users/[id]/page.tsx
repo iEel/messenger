@@ -249,7 +249,7 @@ export default function EditUserPage() {
                                focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
                                appearance-none cursor-pointer transition-all">
                     <option value="requester">พนักงาน (Requester)</option>
-                    <option value="dispatcher">หัวหน้าแมส (Dispatcher)</option>
+                    <option value="dispatcher">หัวหน้าแมสเซ็นเจอร์ (Dispatcher)</option>
                     <option value="messenger">แมสเซ็นเจอร์ (Messenger)</option>
                     <option value="admin">ผู้ดูแลระบบ (Admin)</option>
                   </select>

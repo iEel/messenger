@@ -61,7 +61,7 @@ export default function ReportIssuePage() {
       <div className="max-w-lg mx-auto flex flex-col items-center justify-center min-h-[50vh] animate-fade-in">
         <CheckCircle size={64} className="text-emerald-500 mb-4" />
         <h2 className="text-xl font-bold text-surface-800 dark:text-white">แจ้งปัญหาเรียบร้อย</h2>
-        <p className="text-sm text-surface-500 mt-2">หัวหน้าแมสจะตรวจสอบและแจ้งกลับ</p>
+        <p className="text-sm text-surface-500 mt-2">หัวหน้าแมสเซ็นเจอร์จะตรวจสอบและแจ้งกลับ</p>
       </div>
     );
   }
@@ -79,7 +79,7 @@ export default function ReportIssuePage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-surface-800 dark:text-white">แจ้งปัญหาหน้างาน</h1>
-            <p className="text-xs text-surface-500">ใบงานจะถูกส่งให้หัวหน้าแมสตรวจสอบ</p>
+            <p className="text-xs text-surface-500">ใบงานจะถูกส่งให้หัวหน้าแมสเซ็นเจอร์ตรวจสอบ</p>
           </div>
         </div>
       </div>

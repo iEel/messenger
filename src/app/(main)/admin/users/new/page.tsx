@@ -246,7 +246,7 @@ export default function CreateUserPage() {
                                transition-all duration-200 appearance-none cursor-pointer"
                   >
                     <option value="requester">พนักงาน (Requester)</option>
-                    <option value="dispatcher">หัวหน้าแมส (Dispatcher)</option>
+                    <option value="dispatcher">หัวหน้าแมสเซ็นเจอร์ (Dispatcher)</option>
                     <option value="messenger">แมสเซ็นเจอร์ (Messenger)</option>
                     <option value="admin">ผู้ดูแลระบบ (Admin)</option>
                   </select>

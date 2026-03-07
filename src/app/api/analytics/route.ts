@@ -61,7 +61,7 @@ export async function GET() {
       ORDER BY completed DESC
     `);
 
-    // ★ Workload รายวัน — แมสแต่ละคนวันนี้
+    // ★ Workload รายวัน — แมสเซ็นเจอร์แต่ละคนวันนี้
     const workload = await query<{
       UserId: number; FullName: string;
       total: number; completed: number; in_progress: number; issue: number;

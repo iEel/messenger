@@ -322,7 +322,7 @@ export default function DispatcherPage() {
                 <UserCheck size={14} /> จ่ายงาน
               </button>
             ) : (
-              <p className="text-xs text-surface-400">ยังไม่มีแมส</p>
+              <p className="text-xs text-surface-400">ยังไม่มีแมสเซ็นเจอร์</p>
             )}
           </div>
         </div>

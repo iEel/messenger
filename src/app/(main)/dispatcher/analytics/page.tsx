@@ -228,7 +228,7 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* ★ Workload รายวัน — แมสแต่ละคน */}
+      {/* ★ Workload รายวัน — แมสเซ็นเจอร์แต่ละคน */}
       {workload.length > 0 && (
         <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
                          shadow-[var(--shadow-card)] p-6">

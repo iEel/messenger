@@ -471,7 +471,7 @@ export default function MessengerPage() {
           <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-8 text-center">
             <CheckCircle size={40} className="mx-auto text-emerald-400 mb-3" />
             <p className="font-medium text-surface-800 dark:text-white">ไม่มีงานค้าง</p>
-            <p className="text-sm text-surface-500 mt-1">รอหัวหน้าแมสจ่ายงานใหม่</p>
+            <p className="text-sm text-surface-500 mt-1">รอหัวหน้าแมสเซ็นเจอร์จ่ายงานใหม่</p>
           </div>
         ) : (
           <div className="space-y-3">

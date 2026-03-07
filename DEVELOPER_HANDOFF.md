@@ -477,6 +477,8 @@ cancelled                         issue → return / reschedule
 - ★ **Task Cancel (Dispatcher)** — หัวหน้าแมสเซ็นเจอร์ยกเลิกใบงานได้ทุกสถานะ ยกเว้น completed/returned
   - ปุ่ม "ยกเลิกใบงาน" ที่ task card + confirm dialog
   - บันทึก log: "ยกเลิกโดยหัวหน้าแมสเซ็นเจอร์"
+- ★ **Reschedule Fix** — แก้ "เลื่อนวันส่งใหม่" จากหน้า task detail: status → `new` (รอจ่ายงาน) + ปลด AssignedTo
+  - ทั้งจากในระบบ + จาก email ทำงานเหมือนกัน: กลับเข้าคิวให้หัวหน้าแมสเซ็นเจอร์จ่ายงานใหม่
 
 ---
 

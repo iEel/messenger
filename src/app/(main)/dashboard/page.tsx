@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const userRole = session?.user?.role || 'requester';
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -135,7 +136,7 @@ export default function DashboardPage() {
 
       {/* Weekly Chart + Top Messengers */}
       {!isLoading && data && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className={`grid grid-cols-1 ${userRole !== 'requester' ? 'lg:grid-cols-3' : ''} gap-6`}>
           {/* Weekly Bar Chart */}
           <div className="lg:col-span-2 bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
                           shadow-[var(--shadow-card)] p-5">
@@ -191,7 +192,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Top Messengers */}
+          {/* Top Messengers — เฉพาะ dispatcher/admin */}
+          {userRole !== 'requester' && (
           <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
                           shadow-[var(--shadow-card)] p-5">
             <div className="flex items-center gap-2 mb-4">
@@ -224,6 +226,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       )}
 

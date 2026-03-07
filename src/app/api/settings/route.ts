@@ -14,6 +14,27 @@ export async function GET() {
       `SELECT Id, SettingKey, SettingValue, Description, UpdatedAt FROM SystemSettings ORDER BY SettingKey`
     );
 
+    // คำนวณ task_number_sequence จริงจากตาราง Tasks (เพราะ generateTaskNumber ไม่ได้ใช้ค่าจาก settings)
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const seqResult = await query<{ MaxNum: string | null }[]>(
+      `SELECT TOP 1 TaskNumber AS MaxNum FROM Tasks
+       WHERE TaskNumber LIKE @pattern
+       ORDER BY TaskNumber DESC`,
+      { pattern: `MSG-${yearMonth}-%` }
+    );
+    let currentSeq = 0;
+    if (seqResult.length > 0 && seqResult[0].MaxNum) {
+      const parts = seqResult[0].MaxNum.split('-');
+      currentSeq = parts.length >= 3 ? parseInt(parts[2]) || 0 : 0;
+    }
+
+    // Override ค่า task_number_sequence ให้ตรงกับความเป็นจริง
+    const seqSetting = settings.find(s => s.SettingKey === 'task_number_sequence');
+    if (seqSetting) {
+      seqSetting.SettingValue = String(currentSeq);
+    }
+
     return NextResponse.json(settings);
   } catch (error) {
     console.error('GET /api/settings error:', error);

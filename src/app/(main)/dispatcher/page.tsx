@@ -284,7 +284,7 @@ export default function DispatcherPage() {
           <p className="text-sm text-surface-700 dark:text-surface-300 line-clamp-2 mb-2">{task.DocumentDesc}</p>
           <div className="space-y-1 text-xs text-surface-500 dark:text-surface-400">
             <p className="flex items-center gap-1.5">
-              <UserCheck size={13} /> {task.RecipientName}
+              <UserCheck size={13} /> <span className="font-semibold text-surface-600 dark:text-surface-300">ผู้รับ:</span> {task.RecipientName}
               {task.RecipientCompany && <span className="text-surface-400">({task.RecipientCompany})</span>}
             </p>
             <p className="flex items-center gap-1.5 truncate">
@@ -300,7 +300,7 @@ export default function DispatcherPage() {
             )}
             {/* ★ ผู้สร้างใบงาน */}
             <p className="flex items-center gap-1.5">
-              📝 {task.RequesterName}{task.RequesterDept ? ` (${task.RequesterDept})` : ''}
+              📝 <span className="font-semibold text-surface-600 dark:text-surface-300">ผู้ขอส่ง:</span> {task.RequesterName}{task.RequesterDept ? ` (${task.RequesterDept})` : ''}
               {task.RequesterPhone && (
                 <a href={`tel:${task.RequesterPhone}`}
                   onClick={(e) => e.stopPropagation()}

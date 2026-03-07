@@ -540,7 +540,7 @@ export default function MessengerPage() {
                         <span className="truncate">{task.Address}</span>
                       </p>
                       <div className="flex items-center gap-4">
-                        <span>👤 {task.RecipientName}</span>
+                        <span>👤 <b>ผู้รับ:</b> {task.RecipientName}</span>
                         {task.RecipientPhone && (
                           <a href={`tel:${task.RecipientPhone}`}
                             className="flex items-center gap-1 text-primary-600 dark:text-primary-400 font-medium">
@@ -551,7 +551,7 @@ export default function MessengerPage() {
                       {/* ★ ผู้สร้างใบงาน */}
                       {task.RequesterName && (
                         <div className="flex items-center gap-4 pt-1 border-t border-dashed border-surface-200 dark:border-surface-700 mt-1">
-                          <span>📝 ผู้ขอ: {task.RequesterName}{task.RequesterDept ? ` (${task.RequesterDept})` : ''}</span>
+                          <span>📝 <b>ผู้ขอส่ง:</b> {task.RequesterName}{task.RequesterDept ? ` (${task.RequesterDept})` : ''}</span>
                           {task.RequesterPhone && (
                             <a href={`tel:${task.RequesterPhone}`}
                               className="flex items-center gap-1 text-orange-600 dark:text-orange-400 font-medium">

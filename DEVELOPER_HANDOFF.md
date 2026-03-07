@@ -455,6 +455,10 @@ cancelled                         issue → return / reschedule
 - ★ **App Icon Branding** — ใช้ icon เดียวกันทั้งระบบ (favicon, sidebar, login, PWA)
 - ★ **Analytics SQL Fix** — แก้ AVG ครอบ subquery (ใช้ CROSS APPLY) + แก้ ChangedAt → CreatedAt
 - ★ **Navigation travelmode Fix** — แก้ `travelmode=two_wheeler` → `driving` ในURL เปิด Google Maps (two_wheeler ใช้ได้เฉพาะ Routes API v2 backend เท่านั้น)
+- ★ **Requester Info on Task Cards** — แสดงชื่อผู้ขอส่ง + แผนก + เบอร์โทร (กดโทรได้) ทั้งหน้าจ่ายงาน + หน้าแมส
+  - API เพิ่ม `RequesterPhone`, `RequesterDept` จาก Users JOIN
+  - Label ชัดเจน: **ผู้รับ:** / **ผู้ขอส่ง:** ไม่สับสน
+- ★ **Dashboard Role-based** — ซ่อน "Top แมส" จากพนักงาน (requester) แสดงเฉพาะ dispatcher/admin
 
 ---
 

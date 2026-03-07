@@ -40,6 +40,7 @@ interface AssignedTask {
   RequesterName?: string;
   RequesterPhone?: string | null;
   RequesterDept?: string | null;
+  CreatedAt?: string;
 }
 
 interface ActiveTrip {
@@ -73,6 +74,32 @@ export default function MessengerPage() {
   const userId = session?.user?.id;
   const userRole = session?.user?.role;
   const assignedToParam = (userRole === 'dispatcher' && userId) ? `&assignedTo=${userId}` : '';
+
+  // Office coords for distance calculation
+  const [officeCoords, setOfficeCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  const fetchOfficeCoords = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      const settings: Record<string, string> = {};
+      if (Array.isArray(data)) {
+        data.forEach((s: { SettingKey: string; SettingValue: string }) => { settings[s.SettingKey] = s.SettingValue; });
+      }
+      const lat = parseFloat(settings['office_lat']);
+      const lng = parseFloat(settings['office_lng']);
+      if (lat && lng) setOfficeCoords({ lat, lng });
+    } catch { /* ignore */ }
+  };
+
+  // Haversine formula
+  const calcDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -120,6 +147,7 @@ export default function MessengerPage() {
 
   useEffect(() => {
     fetchData();
+    fetchOfficeCoords();
   }, [fetchData]);
 
   // Auto-refresh polling ทุก 30 วินาที
@@ -535,12 +563,9 @@ export default function MessengerPage() {
                     {/* Details */}
                     <p className="text-sm text-surface-700 dark:text-surface-300 mb-2 ml-8">📄 {task.DocumentDesc}</p>
                     <div className="space-y-1.5 text-xs text-surface-500 dark:text-surface-400 ml-8">
-                      <p className="flex items-center gap-1.5">
-                        <MapPin size={13} className="shrink-0" /> 
-                        <span className="truncate">{task.Address}</span>
-                      </p>
                       <div className="flex items-center gap-4 flex-wrap">
                         <span>👤 <b>ผู้รับ:</b> {task.RecipientName}</span>
+                        {task.RecipientCompany && <span className="text-surface-400">({task.RecipientCompany})</span>}
                         {task.RecipientPhone && (
                           <a href={`tel:${task.RecipientPhone}`}
                             className="flex items-center gap-1 text-primary-600 dark:text-primary-400 font-medium">
@@ -548,6 +573,15 @@ export default function MessengerPage() {
                           </a>
                         )}
                       </div>
+                      <p className="flex items-center gap-1.5">
+                        <MapPin size={13} className="shrink-0" /> 
+                        <span className="truncate">{task.District ? `${task.District} • ` : ''}{task.Address}</span>
+                      </p>
+                      {officeCoords && task.Latitude && task.Longitude && (
+                        <p className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">
+                          🛣️ {calcDistance(officeCoords.lat, officeCoords.lng, task.Latitude, task.Longitude).toFixed(1)} km จากออฟฟิศ
+                        </p>
+                      )}
                       {/* ★ ผู้สร้างใบงาน */}
                       {task.RequesterName && (
                         <div className="flex items-center gap-4 flex-wrap pt-1 border-t border-dashed border-surface-200 dark:border-surface-700 mt-1">

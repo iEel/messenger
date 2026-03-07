@@ -44,14 +44,14 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case 'cancel': {
         if (!['new', 'assigned', 'issue'].includes(task.Status)) {
-          return NextResponse.json({ error: `ไม่สามารถยกเลิกงานในสถานะ "${task.Status}" ได้` }, { status: 400 });
+          return NextResponse.json({ error: `ไม่สามารถดำเนินการในสถานะ "${task.Status}" ได้` }, { status: 400 });
         }
-        await query(`UPDATE Tasks SET Status = 'cancelled', UpdatedAt = GETDATE() WHERE Id = @id`, { id: taskId });
+        await query(`UPDATE Tasks SET Status = 'returning', UpdatedAt = GETDATE() WHERE Id = @id`, { id: taskId });
         await query(
-          `INSERT INTO TaskStatusHistory (TaskId, Status, ChangedBy, Notes) VALUES (@taskId, 'cancelled', @userId, @notes)`,
-          { taskId, userId, notes: 'นำเอกสารมาคืน (จาก email action)' }
+          `INSERT INTO TaskStatusHistory (TaskId, Status, ChangedBy, Notes) VALUES (@taskId, 'returning', @userId, @notes)`,
+          { taskId, userId, notes: 'สั่งนำเอกสารมาคืน (จาก email action)' }
         );
-        return NextResponse.json({ message: `นำเอกสาร ${task.TaskNumber} มาคืนเรียบร้อย`, action: 'cancelled' });
+        return NextResponse.json({ message: `สั่งนำเอกสาร ${task.TaskNumber} กลับมาคืนเรียบร้อย`, action: 'returning' });
       }
 
       case 'reschedule': {

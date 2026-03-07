@@ -59,7 +59,7 @@ export default function DispatcherPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('active');
   const [isLoading, setIsLoading] = useState(true);
   const [assignModal, setAssignModal] = useState<TaskItem | null>(null);
   const [selectedMessenger, setSelectedMessenger] = useState<number | null>(null);
@@ -362,7 +362,7 @@ export default function DispatcherPage() {
       <div className="flex gap-2 flex-wrap">
         {Object.entries(STATUS_CONFIG).slice(0, 6).map(([key, conf]) => (
           <button key={key}
-            onClick={() => { setStatusFilter(statusFilter === key ? 'all' : key); setPage(1); }}
+            onClick={() => { setStatusFilter(statusFilter === key ? 'active' : key); setPage(1); }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium 
                          transition-all duration-200 cursor-pointer border
                          ${statusFilter === key

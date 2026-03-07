@@ -81,8 +81,8 @@ export default function LoginPage() {
         <div className="relative z-10 animate-fade-in">
           <div className="flex items-center gap-4 mb-3">
             <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center
-                            border border-white/20 shadow-lg">
-              <FileText size={28} className="text-white" />
+                            border border-white/20 shadow-lg overflow-hidden">
+              <img src="/favicon.png" alt="Messenger" className="w-14 h-14" />
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Messenger Tracking</h1>
@@ -131,8 +131,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md animate-slide-up">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-10 justify-center">
-            <div className="w-12 h-12 rounded-2xl bg-primary-600 flex items-center justify-center shadow-lg">
-              <FileText size={24} className="text-white" />
+            <div className="w-12 h-12 rounded-2xl shadow-lg overflow-hidden">
+              <img src="/favicon.png" alt="Messenger" className="w-12 h-12" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-surface-800 dark:text-white">Messenger Tracking</h1>

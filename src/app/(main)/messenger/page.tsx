@@ -313,7 +313,7 @@ export default function MessengerPage() {
 
     // จุดแรก = จุดหมาย, จุดท้ายสุด = ปลายทาง, จุดกลาง = waypoints
     if (withCoords.length === 1) {
-      return `https://www.google.com/maps/dir/?api=1&destination=${withCoords[0].Latitude},${withCoords[0].Longitude}&travelmode=two_wheeler`;
+      return `https://www.google.com/maps/dir/?api=1&destination=${withCoords[0].Latitude},${withCoords[0].Longitude}&travelmode=driving`;
     }
 
     const lastTask = withCoords[withCoords.length - 1];
@@ -323,7 +323,7 @@ export default function MessengerPage() {
       .map(t => `${t.Latitude},${t.Longitude}`)
       .join('|');
 
-    return `https://www.google.com/maps/dir/?api=1&destination=${lastTask.Latitude},${lastTask.Longitude}&waypoints=${waypointStr}&travelmode=two_wheeler`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${lastTask.Latitude},${lastTask.Longitude}&waypoints=${waypointStr}&travelmode=driving`;
   };
 
   const getNextAction = (status: TaskStatus, taskType?: string) => {

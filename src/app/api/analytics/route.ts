@@ -50,10 +50,10 @@ export async function GET() {
       FROM Tasks t
       JOIN Users u ON t.AssignedTo = u.Id
       CROSS APPLY (
-        SELECT TOP 1 DATEDIFF(MINUTE, t.CreatedAt, sh.ChangedAt) AS mins
+        SELECT TOP 1 DATEDIFF(MINUTE, t.CreatedAt, sh.CreatedAt) AS mins
         FROM TaskStatusHistory sh
         WHERE sh.TaskId = t.Id AND sh.Status IN ('completed','returned')
-        ORDER BY sh.ChangedAt DESC
+        ORDER BY sh.CreatedAt DESC
       ) completionMinutes
       WHERE t.Status IN ('completed','returned')
         AND t.CreatedAt >= DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0)

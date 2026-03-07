@@ -7,7 +7,7 @@ export async function GET() {
     const messengers = await query<{ Id: number; FullName: string; EmployeeId: string; Phone: string | null }[]>(
       `SELECT Id, FullName, EmployeeId, Phone 
        FROM Users 
-       WHERE Role = 'messenger' AND IsActive = 1 
+       WHERE Role IN ('messenger', 'dispatcher') AND IsActive = 1 
        ORDER BY FullName`
     );
 

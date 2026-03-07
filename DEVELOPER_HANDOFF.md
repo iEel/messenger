@@ -131,7 +131,7 @@ d:\Antigravity\messenger\
 │   │   │   ├── uploads/[...path]/     ← ★ Serve ไฟล์อัปโหลด (auth protected)
 │   │   │   └── users/                 ← CRUD ผู้ใช้
 │   │   ├── globals.css
-│   │   ├── layout.tsx                 ← Root layout
+│   │   ├── layout.tsx                 ← Root layout + PWA manifest + SW registration
 │   │   └── page.tsx                   ← Redirect → /login
 │   │
 │   ├── components/
@@ -139,7 +139,7 @@ d:\Antigravity\messenger\
 │   │   ├── ui/AddressAutocomplete.tsx ← ค้นหาที่อยู่ไทย
 │   │   ├── ui/Badge.tsx              ← ★ Reusable Badge (6 variants + pulse)
 │   │   ├── ui/Button.tsx             ← ★ Reusable Button (4 variants + loading + icon)
-│   │   ├── ui/MapPicker.tsx          ← ★ Google Maps ปักหมุดเลือกพิกัด
+│   │   ├── ui/MapPicker.tsx          ← ★ Google Maps ปักหมุด + Places Autocomplete ค้นหาสถานที่
 │   │   ├── ui/Modal.tsx              ← ★ Reusable Modal (Esc/overlay close + sizes)
 │   │   ├── ui/PhoneInput.tsx          ← ★ เบอร์โทรไทย (mask + validation)
 │   │   ├── ui/SignaturePad.tsx        ← Canvas เซ็นชื่อ
@@ -157,6 +157,7 @@ d:\Antigravity\messenger\
 │       └── thailand-address.ts        ← ที่อยู่ไทย 7,436 ตำบล
 │
 ├── public/
+│   ├── favicon.png                ← ★ App icon (ใช้ทั้ง tab + sidebar + login)
 │   ├── manifest.json              ← ★ PWA manifest
 │   ├── sw.js                      ← ★ Service Worker (offline + background sync)
 │   └── icons/                     ← ★ PWA icons (192 + 512)
@@ -446,6 +447,13 @@ cancelled                         issue → return / reschedule
 ไม่มีแล้วครับ — gap analysis 20 ข้อปิดหมดแล้ว ✅
 
 > **หมายเหตุ:** ฟีเจอร์ที่ย้ายไป ✅ แล้ว: คำนวณระยะทาง, อีเมลแจ้งเตือน, Zone Clustering, งานไป-กลับ Flow, **File Upload POD**, **Date Formatting**, **Auto-Refresh Polling**, **Routes API v2**, **Smart Routing**, **Loop Closing**, **Workload**, **Export CSV**, **ถ่ายรูปเช็ค**, **Email คืนเอกสาร**, **Map Picker**, **PWA**, **Reusable UI**
+
+### Phase 11 — UX Improvements ★ (ใหม่)
+- ★ **MapPicker + Places Autocomplete** — เพิ่มช่องค้นหาสถานที่ (พิมพ์ชื่อแล้วแผนที่เลื่อนไป + ปักหมุดให้, จำกัดผลเฉพาะประเทศไทย)
+- ★ **Dispatcher Default Filter** — เปิดหน้ามาแสดงเฉพาะงานที่ยังไม่จบ (ซ่อน completed/returned/cancelled)
+  - API รองรับ `status=active` filter
+- ★ **App Icon Branding** — ใช้ icon เดียวกันทั้งระบบ (favicon, sidebar, login, PWA)
+- ★ **Analytics SQL Fix** — แก้ AVG ครอบ subquery (ใช้ CROSS APPLY) + แก้ ChangedAt → CreatedAt
 
 ---
 

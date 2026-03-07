@@ -22,8 +22,11 @@ import {
   Timer,
   Pencil,
   XCircle,
+  Camera,
+  X,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
+import { formatDateTime, formatDateTimeShort, formatDate } from '@/lib/date-utils';
 
 interface TaskDetail {
   Id: number;
@@ -68,6 +71,14 @@ interface DistanceInfo {
   source: 'google' | 'haversine';
 }
 
+interface PodEntry {
+  Id: number;
+  Type: string;
+  FilePath: string;
+  FileName: string;
+  CreatedAt: string;
+}
+
 export default function TaskDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -75,10 +86,12 @@ export default function TaskDetailPage() {
 
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [pod, setPod] = useState<PodEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [distance, setDistance] = useState<DistanceInfo | null>(null);
   const [distanceLoading, setDistanceLoading] = useState(false);
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTask();
@@ -91,6 +104,7 @@ export default function TaskDetailPage() {
       const data = await res.json();
       setTask(data.task);
       setHistory(data.history);
+      setPod(data.pod || []);
 
       // Auto-fetch distance if task has coordinates
       if (data.task?.Latitude && data.task?.Longitude) {
@@ -199,7 +213,7 @@ export default function TaskDetailPage() {
               </span>
             )}
           </div>
-          <p className="text-sm text-surface-500 mt-1">สร้างเมื่อ {new Date(task.CreatedAt).toLocaleString('th-TH')}</p>
+          <p className="text-sm text-surface-500 mt-1">สร้างเมื่อ {formatDateTime(task.CreatedAt)}</p>
         </div>
       </div>
 
@@ -263,7 +277,7 @@ export default function TaskDetailPage() {
             <p className="text-surface-800 dark:text-white">{task.DocumentDesc}</p>
             {task.Notes && <p className="text-sm text-surface-500 mt-2">💬 {task.Notes}</p>}
             {task.ScheduledDate && (
-              <p className="text-sm text-surface-500 mt-2">📅 วันนัดส่ง: {new Date(task.ScheduledDate).toLocaleDateString('th-TH')}</p>
+              <p className="text-sm text-surface-500 mt-2">📅 วันนัดส่ง: {formatDate(task.ScheduledDate)}</p>
             )}
           </div>
 
@@ -333,6 +347,53 @@ export default function TaskDetailPage() {
               )}
             </div>
           </div>
+
+          {/* หลักฐานการส่ง (POD) */}
+          {pod.length > 0 && (
+            <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 shadow-[var(--shadow-card)] p-5">
+              <h3 className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-3">📸 หลักฐานการส่ง</h3>
+
+              {/* รูปถ่าย */}
+              {pod.filter(p => p.Type === 'photo').length > 0 && (
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-surface-600 dark:text-surface-400 mb-2 flex items-center gap-1.5">
+                    <Camera size={14} /> รูปถ่าย ({pod.filter(p => p.Type === 'photo').length})
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {pod.filter(p => p.Type === 'photo').map(p => (
+                      <button key={p.Id} type="button"
+                        onClick={() => setLightboxImg(`/api/uploads/${p.FilePath}`)}
+                        className="relative aspect-square rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700
+                                   hover:ring-2 hover:ring-primary-400 transition-all cursor-pointer group">
+                        <img src={`/api/uploads/${p.FilePath}`} alt={p.FileName}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ลายเซ็น */}
+              {pod.filter(p => p.Type === 'signature').length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-surface-600 dark:text-surface-400 mb-2">✍️ ลายเซ็นผู้รับ</p>
+                  {pod.filter(p => p.Type === 'signature').map(p => (
+                    <button key={p.Id} type="button"
+                      onClick={() => setLightboxImg(`/api/uploads/${p.FilePath}`)}
+                      className="rounded-xl border-2 border-dashed border-surface-200 dark:border-surface-700 bg-white p-2
+                                 overflow-hidden hover:ring-2 hover:ring-primary-400 transition-all cursor-pointer">
+                      <img src={`/api/uploads/${p.FilePath}`} alt="ลายเซ็น"
+                        className="max-h-32 mx-auto" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-[10px] text-surface-400 mt-3">
+                บันทึกเมื่อ {formatDateTimeShort(pod[0].CreatedAt)}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Timeline */}
@@ -358,7 +419,7 @@ export default function TaskDetailPage() {
                     <div className="flex-1 min-w-0 pt-0.5">
                       <p className="text-sm font-medium text-surface-800 dark:text-white">{conf?.labelTh}</p>
                       <p className="text-xs text-surface-500 mt-0.5">
-                        {new Date(entry.CreatedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
+                        {formatDateTimeShort(entry.CreatedAt)}
                       </p>
                       <p className="text-xs text-surface-400 mt-0.5">โดย {entry.ChangedByName}</p>
                       {entry.Notes && <p className="text-xs text-surface-500 mt-1 italic">💬 {entry.Notes}</p>}
@@ -389,13 +450,28 @@ export default function TaskDetailPage() {
               {task.CompletedAt && (
                 <div className="flex justify-between">
                   <span>เสร็จเมื่อ</span>
-                  <span className="text-surface-700 dark:text-surface-300">{new Date(task.CompletedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                  <span className="text-surface-700 dark:text-surface-300">{formatDateTimeShort(task.CompletedAt)}</span>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {lightboxImg && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setLightboxImg(null)}>
+          <button type="button" onClick={() => setLightboxImg(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm
+                       flex items-center justify-center text-white hover:bg-white/30 transition-colors cursor-pointer z-10">
+            <X size={20} />
+          </button>
+          <img src={lightboxImg} alt="Preview"
+            className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }

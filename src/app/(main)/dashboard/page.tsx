@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
+import { formatDateFull } from '@/lib/date-utils';
 
 // สถิติจำลอง (จะเชื่อมต่อ API จริงใน Phase ถัดไป)
 const mockStats = [
@@ -38,7 +39,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
           <Clock size={16} />
-          <span>{new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <span>{formatDateFull(new Date())}</span>
         </div>
       </div>
 

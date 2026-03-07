@@ -18,6 +18,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { ROLE_CONFIG, type User, type UserRole } from '@/lib/types';
+import { formatDateTimeShort } from '@/lib/date-utils';
 
 export default function UsersListPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -209,7 +210,7 @@ export default function UsersListPage() {
                       </td>
                       <td className="px-5 py-4 text-sm text-surface-500 dark:text-surface-400">
                         {user.LastLoginAt
-                          ? new Date(user.LastLoginAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })
+                          ? formatDateTimeShort(user.LastLoginAt)
                           : '—'}
                       </td>
                       <td className="px-5 py-4 text-center">

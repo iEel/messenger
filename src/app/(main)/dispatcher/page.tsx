@@ -23,6 +23,7 @@ import {
   Route,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
+import { formatDateTimeShort } from '@/lib/date-utils';
 
 interface TaskItem {
   Id: number;
@@ -237,7 +238,7 @@ export default function DispatcherPage() {
               <MapPin size={13} /> {task.District || task.Address}
             </p>
             <p className="flex items-center gap-1.5">
-              <Clock size={13} /> {new Date(task.CreatedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
+              <Clock size={13} /> {formatDateTimeShort(task.CreatedAt)}
             </p>
             {officeCoords && task.Latitude && task.Longitude && (
               <p className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-medium">

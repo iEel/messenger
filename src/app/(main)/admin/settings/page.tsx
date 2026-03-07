@@ -11,6 +11,7 @@ import {
   Globe,
   Hash,
 } from 'lucide-react';
+import { formatDateTimeShort } from '@/lib/date-utils';
 
 interface Setting {
   Id: number;
@@ -242,7 +243,7 @@ export default function AdminSettingsPage() {
                   <td className="px-4 py-3 font-medium text-surface-800 dark:text-white">{s.SettingValue}</td>
                   <td className="px-4 py-3 text-surface-500 dark:text-surface-400 text-xs">{s.Description || '-'}</td>
                   <td className="px-4 py-3 text-surface-400 text-xs">
-                    {new Date(s.UpdatedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
+                    {formatDateTimeShort(s.UpdatedAt)}
                   </td>
                 </tr>
               ))}

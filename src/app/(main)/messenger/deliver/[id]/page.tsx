@@ -29,6 +29,7 @@ export default function DeliveryPage() {
   const [success, setSuccess] = useState(false);
   const [taskType, setTaskType] = useState<string>('oneway');
   const [isRoundtrip, setIsRoundtrip] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
 
   // Fetch task info to check if roundtrip
   useEffect(() => {
@@ -60,6 +61,43 @@ export default function DeliveryPage() {
     });
   };
 
+  // Helper: upload a single file
+  const uploadFile = async (file: File | Blob, type: 'photo' | 'signature', fileName?: string) => {
+    const formData = new FormData();
+    if (file instanceof Blob && !(file instanceof File)) {
+      formData.append('file', file, fileName || 'signature.png');
+    } else {
+      formData.append('file', file);
+    }
+    formData.append('taskId', taskId);
+    formData.append('type', type);
+
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Upload failed');
+    }
+
+    return res.json();
+  };
+
+  // Convert base64 data URL to Blob
+  const dataUrlToBlob = (dataUrl: string): Blob => {
+    const parts = dataUrl.split(',');
+    const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const byteString = atob(parts[1]);
+    const arrayBuffer = new ArrayBuffer(byteString.length);
+    const uint8Array = new Uint8Array(arrayBuffer);
+    for (let i = 0; i < byteString.length; i++) {
+      uint8Array[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([uint8Array], { type: mime });
+  };
+
   const handleSubmit = async () => {
     if (!signature) {
       alert('กรุณาให้ผู้รับเซ็นชื่อ');
@@ -68,6 +106,19 @@ export default function DeliveryPage() {
 
     setIsLoading(true);
     try {
+      // 1. อัปโหลดรูปถ่าย
+      for (let i = 0; i < photos.length; i++) {
+        setUploadProgress(`อัปโหลดรูปที่ ${i + 1}/${photos.length}...`);
+        await uploadFile(photos[i].file, 'photo');
+      }
+
+      // 2. อัปโหลดลายเซ็น
+      setUploadProgress('บันทึกลายเซ็น...');
+      const signatureBlob = dataUrlToBlob(signature);
+      await uploadFile(signatureBlob, 'signature', 'signature.png');
+
+      // 3. อัปเดตสถานะ
+      setUploadProgress('อัปเดตสถานะ...');
       const podNotes = [
         `ผู้รับ: ${receiverName || '-'}`,
         `รูปถ่าย: ${photos.length} รูป`,
@@ -84,16 +135,17 @@ export default function DeliveryPage() {
         body: JSON.stringify({
           status: nextStatus,
           notes: podNotes + (isRoundtrip ? ' | 🔄 รอรับเอกสารกลับ' : ''),
-          signatureData: signature,
         }),
       });
 
       setSuccess(true);
       setTimeout(() => router.push('/messenger'), 2500);
-    } catch {
-      alert('เกิดข้อผิดพลาด กรุณาลองใหม่');
+    } catch (err) {
+      console.error('Submit error:', err);
+      alert('เกิดข้อผิดพลาดในการอัปโหลด กรุณาลองใหม่');
     } finally {
       setIsLoading(false);
+      setUploadProgress('');
     }
   };
 
@@ -228,6 +280,14 @@ export default function DeliveryPage() {
                        focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all resize-none" />
         </div>
       </div>
+
+      {/* Upload Progress */}
+      {uploadProgress && (
+        <div className="flex items-center justify-center gap-2 py-2 text-sm text-primary-600 dark:text-primary-400 animate-pulse">
+          <Loader2 size={16} className="animate-spin" />
+          {uploadProgress}
+        </div>
+      )}
 
       {/* Submit */}
       <button onClick={handleSubmit} disabled={!signature || isLoading}

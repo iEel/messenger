@@ -42,9 +42,19 @@ export async function GET(
       { id: parseInt(id) }
     );
 
+    // ดึงหลักฐานการส่ง (POD)
+    const pod = await query<{ Id: number; Type: string; FilePath: string; FileName: string; CreatedAt: string }[]>(
+      `SELECT Id, Type, FilePath, FileName, CreatedAt
+       FROM ProofOfDelivery
+       WHERE TaskId = @id
+       ORDER BY CreatedAt ASC`,
+      { id: parseInt(id) }
+    );
+
     return NextResponse.json({
       task: tasks[0],
       history,
+      pod,
     });
   } catch (error) {
     console.error('GET /api/tasks/[id] error:', error);

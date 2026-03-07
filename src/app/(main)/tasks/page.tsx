@@ -15,6 +15,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
+import { formatDate } from '@/lib/date-utils';
 
 interface TaskItem {
   Id: number;
@@ -179,7 +180,7 @@ export default function TasksListPage() {
                     {/* Right Side */}
                     <div className="flex items-center gap-3 sm:flex-col sm:items-end">
                       <span className="text-xs text-surface-400">
-                        {new Date(task.CreatedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' })}
+                        {formatDate(task.CreatedAt)}
                       </span>
                       {task.MessengerName && (
                         <span className="text-xs text-surface-500 dark:text-surface-400">🏍️ {task.MessengerName}</span>

@@ -124,8 +124,10 @@ d:\Antigravity\messenger\
 │   │   │   ├── maps-resolve/          ← ★ Resolve short URL (goo.gl)
 │   │   │   ├── messengers/            ← ดึงรายชื่อแมส
 │   │   │   ├── settings/              ← ★ API ตั้งค่าระบบ (GET/PATCH)
-│   │   │   ├── tasks/                 ← CRUD ใบงาน (GET/POST/PATCH/PUT)
+│   │   │   ├── tasks/                 ← CRUD ใบงาน (GET/POST/PATCH/PUT) + POD data
 │   │   │   ├── trips/                 ← เริ่ม/จบรอบวิ่ง
+│   │   │   ├── upload/                ← ★ อัปโหลดไฟล์ POD (photo/signature)
+│   │   │   ├── uploads/[...path]/     ← ★ Serve ไฟล์อัปโหลด (auth protected)
 │   │   │   └── users/                 ← CRUD ผู้ใช้
 │   │   ├── globals.css
 │   │   ├── layout.tsx                 ← Root layout
@@ -141,6 +143,7 @@ d:\Antigravity\messenger\
 │   │
 │   └── lib/
 │       ├── auth.ts                    ← NextAuth config
+│       ├── date-utils.ts              ← ★ Format วันเวลา (แก้ timezone + ปี ค.ศ.)
 │       ├── db.ts                      ← SQL Server connection
 │       ├── distance.ts                ← ★ Google Maps + Haversine
 │       ├── email.ts                   ← Email templates
@@ -278,6 +281,12 @@ erDiagram
 |--------|------|----------|
 | GET | `/api/analytics` | สถิติวันนี้, 7 วันย้อนหลัง, Top 5 แมส |
 
+### 6.8 Upload & Files ★ (ใหม่)
+| Method | Path | คำอธิบาย |
+|--------|------|----------|
+| POST | `/api/upload` | ★ อัปโหลดไฟล์ POD (FormData: file, taskId, type=photo/signature) |
+| GET | `/api/uploads/[...path]` | ★ Serve ไฟล์อัปโหลด (auth protected, path traversal prevention) |
+
 ---
 
 ## 7. Task Status Flow
@@ -335,7 +344,7 @@ cancelled                         issue → return / reschedule
 - แจ้งปัญหาหน้างาน (4 ประเภท)
 - **Proof of Delivery** — ถ่ายรูป (max 3) + เซ็นชื่อ Canvas + ชื่อผู้รับจริง
 
-### Phase 5 — ระบบสนับสนุน ★ (ใหม่)
+### Phase 5 — ระบบสนับสนุน
 - ★ **คำนวณระยะทาง** — Google Maps Directions API + Haversine fallback
   - API endpoint `/api/distance` (office→task หรือ custom coords)
   - แสดงระยะทาง+เวลาเดินทาง auto ในหน้ารายละเอียดใบงาน
@@ -346,32 +355,39 @@ cancelled                         issue → return / reschedule
   - ตารางแสดง raw settings ทั้งหมด
   - API `/api/settings` (GET/PATCH with MERGE upsert)
 
+### Phase 6 — POD File Upload + Date Formatting ★ (ใหม่)
+- ★ **File Upload จริง (POD)** — ถ่ายรูป + เซ็นชื่อ save ลง server จริง
+  - API endpoint `POST /api/upload` (FormData: file, taskId, type)
+  - Save ไฟล์ลง `./uploads/pod/{taskId}/` + บันทึกลงตาราง `ProofOfDelivery`
+  - API endpoint `GET /api/uploads/[...path]` (serve ไฟล์ + auth + path traversal protection)
+  - หน้า deliver อัปโหลดรูป+ลายเซ็นจริงก่อน PATCH status + แสดง progress
+  - หน้ารายละเอียดใบงาน แสดง section 📸 หลักฐานการส่ง (รูปถ่าย grid + ลายเซ็น + lightbox คลิกขยาย)
+- ★ **Date Formatting กลาง** (`lib/date-utils.ts`)
+  - แก้ปีแสดงเป็น พ.ศ. 2569 → ใช้ ค.ศ. 2026 พร้อมเดือนภาษาไทย
+  - แก้ timezone ซ้อน (GETDATE() เก็บ local → mssql driver ตีความ UTC → browser +7 อีกรอบ)
+  - Helper: `formatDateTime`, `formatDateTimeShort`, `formatDate`, `formatDateFull`
+  - อัปเดตทั้งระบบ (7 ไฟล์) ให้ใช้ helper กลาง
+
 ---
 
 ## 9. สิ่งที่ยังไม่ได้ทำ ❌ (เรียงตามความสำคัญ)
-
-### 🔴 สำคัญสูง
-
-| # | ฟีเจอร์ | รายละเอียด | ตารางที่เกี่ยวข้อง |
-|---|---------|-----------|-------------------|
-| 1 | **File Upload จริง (POD)** | ถ่ายรูป+เซ็นชื่อ ตอนนี้ยังไม่ได้ save ไฟล์จริงลง server มีแค่ UI (ส่ง base64 ไป API) ต้อง implement upload API + save ลง `ProofOfDelivery` table | `ProofOfDelivery` |
 
 ### 🟡 สำคัญปานกลาง
 
 | # | ฟีเจอร์ | รายละเอียด |
 |---|---------|-----------|
-| 2 | **Real-time Update** | ใช้ polling ทุก 30 วินาที หรือ WebSocket ให้แดชบอร์ด Dispatcher update อัตโนมัติ |
-| 3 | **Export CSV/Excel** | ส่งออกรายงาน (ใช้ `xlsx` หรือ `csv-stringify`) |
+| 1 | **Real-time Update** | ใช้ polling ทุก 30 วินาที หรือ WebSocket ให้แดชบอร์ด Dispatcher update อัตโนมัติ |
+| 2 | **Export CSV/Excel** | ส่งออกรายงาน (ใช้ `xlsx` หรือ `csv-stringify`) |
 
 ### 🟢 ภายหลัง
 
 | # | ฟีเจอร์ | รายละเอียด |
 |---|---------|-----------|
-| 4 | **PWA + Offline** | `manifest.json` + Service Worker + ใช้ `next-pwa` package |
-| 5 | **Reusable UI Components** | แยก Button, Modal, Table, Badge เป็น component กลาง ใน `components/ui/` |
-| 6 | **Map Picker** | Maps JavaScript API ปักหมุดเลือกพิกัดบนแผนที่ |
+| 3 | **PWA + Offline** | `manifest.json` + Service Worker + ใช้ `next-pwa` package |
+| 4 | **Reusable UI Components** | แยก Button, Modal, Table, Badge เป็น component กลาง ใน `components/ui/` |
+| 5 | **Map Picker** | Maps JavaScript API ปักหมุดเลือกพิกัดบนแผนที่ |
 
-> **หมายเหตุ:** ฟีเจอร์ที่ย้ายไป ✅ แล้ว: คำนวณระยะทาง, อีเมลแจ้งเตือน, Zone Clustering (basic), งานไป-กลับ Flow
+> **หมายเหตุ:** ฟีเจอร์ที่ย้ายไป ✅ แล้ว: คำนวณระยะทาง, อีเมลแจ้งเตือน, Zone Clustering (basic), งานไป-กลับ Flow, **File Upload POD**, **Date Formatting**
 
 ---
 
@@ -382,9 +398,10 @@ cancelled                         issue → return / reschedule
 | 1 | `nodemailer` peer dependency conflict | ต้องใช้ `--legacy-peer-deps` ตอน install | อัปเกรด `next-auth` เป็น stable version |
 | 2 | NEXTAUTH_SECRET ใช้ค่า default | ไม่ปลอดภัยสำหรับ production | เปลี่ยนเป็น random 32+ chars |
 | 3 | DB password ใน `.env.local` เป็น plaintext | ไม่ควรอยู่ใน repo | ใช้ Secret Manager / Vault |
-| 4 | POD ส่ง base64 แต่ไม่ได้ save ลง disk/DB | ข้อมูลจะหาย | Implement file storage + `ProofOfDelivery` table |
-| 5 | ไม่มี rate limiting | API อาจถูก abuse | ใช้ `next-rate-limit` middleware |
-| 6 | ไม่มี input validation (Zod/Yup) | SQL Injection risk น้อย (parameterized) แต่ data อาจไม่ถูกต้อง | เพิ่ม Zod validation |
+| 4 | ไม่มี rate limiting | API อาจถูก abuse | ใช้ `next-rate-limit` middleware |
+| 5 | ไม่มี input validation (Zod/Yup) | SQL Injection risk น้อย (parameterized) แต่ data อาจไม่ถูกต้อง | เพิ่ม Zod validation |
+| ~~6~~ | ~~POD ส่ง base64 แต่ไม่ได้ save~~ | ~~ข้อมูลจะหาย~~ | ✅ **แก้แล้ว** — Phase 6 File Upload POD |
+| ~~7~~ | ~~วันเวลาแสดงผิด (ปี พ.ศ. + timezone ซ้อน)~~ | ~~แสดง 7/3/69 16:53 แทน 7/3/2026 09:53~~ | ✅ **แก้แล้ว** — `lib/date-utils.ts` |
 
 ---
 

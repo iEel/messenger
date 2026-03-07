@@ -5,14 +5,16 @@ const SECRET = process.env.NEXTAUTH_SECRET || 'email-action-secret';
 export interface EmailActionPayload {
   taskId: number;
   action: 'cancel' | 'reschedule' | 'view';
+  userId: number;    // ★ เก็บ userId ของผู้รับ email เพื่อ audit trail
   expiresAt: number; // Unix timestamp
 }
 
 // สร้าง action token (ใช้ได้ 72 ชม.)
-export function createEmailActionToken(taskId: number, action: EmailActionPayload['action']): string {
+export function createEmailActionToken(taskId: number, action: EmailActionPayload['action'], userId: number): string {
   const payload: EmailActionPayload = {
     taskId,
     action,
+    userId,
     expiresAt: Date.now() + 72 * 60 * 60 * 1000, // 72 hours
   };
   const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -39,8 +41,8 @@ export function verifyEmailActionToken(token: string): EmailActionPayload | null
 }
 
 // สร้าง URL สำหรับปุ่มใน email
-export function buildEmailActionUrl(taskId: number, action: EmailActionPayload['action']): string {
+export function buildEmailActionUrl(taskId: number, action: EmailActionPayload['action'], userId: number): string {
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-  const token = createEmailActionToken(taskId, action);
+  const token = createEmailActionToken(taskId, action, userId);
   return `${baseUrl}/email-action?token=${token}`;
 }

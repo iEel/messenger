@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ลิงก์หมดอายุหรือไม่ถูกต้อง' }, { status: 403 });
     }
 
-    const { taskId, action } = payload;
+    const { taskId, action, userId } = payload;
 
     // ดึงข้อมูล task
     const tasks = await query<{ Id: number; TaskNumber: string; Status: string; DocumentDesc: string; RecipientName: string }[]>(
@@ -48,8 +48,8 @@ export async function POST(request: NextRequest) {
         }
         await query(`UPDATE Tasks SET Status = 'cancelled', UpdatedAt = GETDATE() WHERE Id = @id`, { id: taskId });
         await query(
-          `INSERT INTO TaskStatusHistory (TaskId, Status, ChangedBy, Notes) VALUES (@taskId, 'cancelled', NULL, @notes)`,
-          { taskId, notes: 'ยกเลิกจาก email action' }
+          `INSERT INTO TaskStatusHistory (TaskId, Status, ChangedBy, Notes) VALUES (@taskId, 'cancelled', @userId, @notes)`,
+          { taskId, userId, notes: 'ยกเลิกจาก email action' }
         );
         return NextResponse.json({ message: `ยกเลิกใบงาน ${task.TaskNumber} เรียบร้อย`, action: 'cancelled' });
       }
@@ -61,8 +61,8 @@ export async function POST(request: NextRequest) {
         }
         await query(`UPDATE Tasks SET Status = 'new', AssignedTo = NULL, UpdatedAt = GETDATE() WHERE Id = @id`, { id: taskId });
         await query(
-          `INSERT INTO TaskStatusHistory (TaskId, Status, ChangedBy, Notes) VALUES (@taskId, 'new', NULL, @notes)`,
-          { taskId, notes: 'ส่งกลับเข้าคิวใหม่จาก email action' }
+          `INSERT INTO TaskStatusHistory (TaskId, Status, ChangedBy, Notes) VALUES (@taskId, 'new', @userId, @notes)`,
+          { taskId, userId, notes: 'ส่งกลับเข้าคิวใหม่จาก email action' }
         );
         return NextResponse.json({ message: `ส่ง ${task.TaskNumber} กลับเข้าคิวใหม่เรียบร้อย`, action: 'rescheduled' });
       }

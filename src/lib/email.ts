@@ -208,13 +208,14 @@ export function emailTaskAssigned(taskNumber: string, documentDesc: string, reci
 
 export function emailIssueAlert(
   taskNumber: string, issueType: string, messengerName: string, description: string,
-  taskId?: number, taskInfo?: { documentDesc: string; recipientName: string; address: string }
+  taskId?: number, taskInfo?: { documentDesc: string; recipientName: string; address: string },
+  requesterId?: number
 ) {
   // สร้างปุ่ม action ถ้ามี taskId
   let actionButtons = '';
-  if (taskId) {
-    const cancelUrl = buildEmailActionUrl(taskId, 'cancel');
-    const rescheduleUrl = buildEmailActionUrl(taskId, 'reschedule');
+  if (taskId && requesterId) {
+    const cancelUrl = buildEmailActionUrl(taskId, 'cancel', requesterId);
+    const rescheduleUrl = buildEmailActionUrl(taskId, 'reschedule', requesterId);
     actionButtons = `
       <div style="margin-top:16px;display:flex;gap:8px;">
         <a href="${rescheduleUrl}" style="flex:1;display:block;padding:12px 0;text-align:center;border-radius:10px;background:#f59e0b;color:white;font-weight:700;font-size:14px;text-decoration:none;">🔄 ส่งกลับเข้าคิว</a>

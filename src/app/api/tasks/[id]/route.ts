@@ -229,11 +229,12 @@ async function sendEmailNotification(taskId: number, newStatus: string, notes?: 
     const tasks = await query<{
       TaskNumber: string; DocumentDesc: string; RecipientName: string;
       Address: string; RequesterEmail: string; RequesterName: string;
+      RequesterId: number;
       MessengerEmail: string | null; MessengerName: string | null;
       DispatcherEmails: string;
     }[]>(`
       SELECT t.TaskNumber, t.DocumentDesc, t.RecipientName, t.Address,
-             u1.Email AS RequesterEmail, u1.FullName AS RequesterName,
+             u1.Email AS RequesterEmail, u1.FullName AS RequesterName, t.RequesterId,
              u2.Email AS MessengerEmail, u2.FullName AS MessengerName,
              STUFF((SELECT ',' + Email FROM Users WHERE Role = 'dispatcher' AND IsActive = 1 AND Email IS NOT NULL FOR XML PATH('')), 1, 1, '') AS DispatcherEmails
       FROM Tasks t
@@ -256,7 +257,7 @@ async function sendEmailNotification(taskId: number, newStatus: string, notes?: 
       case 'issue': {
         const mail = emailIssueAlert(t.TaskNumber, notes || 'ไม่ระบุ', t.MessengerName || '-', notes || '', taskId, {
           documentDesc: t.DocumentDesc, recipientName: t.RecipientName, address: t.Address,
-        });
+        }, t.RequesterId);
         // ส่งให้หัวหน้าแมสเซ็นเจอร์
         if (t.DispatcherEmails) {
           await sendMail({ to: t.DispatcherEmails, ...mail });

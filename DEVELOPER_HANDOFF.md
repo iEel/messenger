@@ -467,6 +467,16 @@ cancelled                         issue → return / reschedule
   - SMTP password เป็น fallback
   - Endpoint ทดสอบ: `/api/test-email`
 - ★ **Issue Alert → Requester** — แจ้งปัญหาส่ง email ไปหาเจ้าของงาน (requester) ด้วย ไม่ใช่แค่ dispatcher
+  - Email แสดงรายละเอียดใบงาน (เอกสาร, ผู้รับ, ที่อยู่) เพื่อให้ requester จำได้
+- ★ **Email Action Buttons** — ปุ่มตัดสินใจใน email แจ้งปัญหา ไม่ต้อง login เข้าระบบ
+  - **📦 นำเอกสารมาคืน** — สั่งให้แมสเซ็นเจอร์นำเอกสารกลับ (status → cancelled)
+  - **📅 เลื่อนวันส่งใหม่** — ส่งกลับเป็นรอจ่ายงาน (status → new)
+  - Token เข้ารหัส HMAC-SHA256 + หมดอายุ 72 ชม.
+  - ฝัง `userId` ใน token เพื่อ audit trail (ChangedBy ใน TaskStatusHistory)
+  - ไฟล์: `src/lib/email-action.ts`, `src/app/api/email-action/route.ts`, `src/app/email-action/page.tsx`
+- ★ **Task Cancel (Dispatcher)** — หัวหน้าแมสเซ็นเจอร์ยกเลิกใบงานได้ทุกสถานะ ยกเว้น completed/returned
+  - ปุ่ม "ยกเลิกใบงาน" ที่ task card + confirm dialog
+  - บันทึก log: "ยกเลิกโดยหัวหน้าแมสเซ็นเจอร์"
 
 ---
 

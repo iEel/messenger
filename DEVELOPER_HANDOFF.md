@@ -479,6 +479,9 @@ cancelled                         issue → return / reschedule
   - บันทึก log: "ยกเลิกโดยหัวหน้าแมสเซ็นเจอร์"
 - ★ **Reschedule Fix** — แก้ "เลื่อนวันส่งใหม่" จากหน้า task detail: status → `new` (รอจ่ายงาน) + ปลด AssignedTo
   - ทั้งจากในระบบ + จาก email ทำงานเหมือนกัน: กลับเข้าคิวให้หัวหน้าแมสเซ็นเจอร์จ่ายงานใหม่
+- ★ **Return Document Flow** — "นำเอกสารมาคืน" ทำงานเหมือนกันทั้งในระบบ + email (status → `returning`)
+  - แมสเซ็นเจอร์เห็น alert "📦 กรุณานำเอกสารกลับมาคืนที่ออฟฟิศ" + ปุ่ม "คืนเอกสาร + ถ่ายรูป"
+  - กด confirm → status = `returned` + ถ่ายรูป POD → จบงาน
 
 ---
 

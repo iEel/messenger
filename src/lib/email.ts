@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { buildEmailActionUrl } from '@/lib/email-action';
 
 // =============================================
 // Azure AD — ขอ access token (Microsoft Graph)
@@ -205,7 +206,21 @@ export function emailTaskAssigned(taskNumber: string, documentDesc: string, reci
   };
 }
 
-export function emailIssueAlert(taskNumber: string, issueType: string, messengerName: string, description: string) {
+export function emailIssueAlert(taskNumber: string, issueType: string, messengerName: string, description: string, taskId?: number) {
+  // สร้างปุ่ม action ถ้ามี taskId
+  let actionButtons = '';
+  if (taskId) {
+    const cancelUrl = buildEmailActionUrl(taskId, 'cancel');
+    const rescheduleUrl = buildEmailActionUrl(taskId, 'reschedule');
+    actionButtons = `
+      <div style="margin-top:16px;display:flex;gap:8px;">
+        <a href="${rescheduleUrl}" style="flex:1;display:block;padding:12px 0;text-align:center;border-radius:10px;background:#f59e0b;color:white;font-weight:700;font-size:14px;text-decoration:none;">🔄 ส่งกลับเข้าคิว</a>
+        <a href="${cancelUrl}" style="flex:1;display:block;padding:12px 0;text-align:center;border-radius:10px;background:#ef4444;color:white;font-weight:700;font-size:14px;text-decoration:none;">✕ ยกเลิกงาน</a>
+      </div>
+      <p style="margin:8px 0 0;font-size:10px;color:#d1d5db;text-align:center;">ลิงก์มีอายุ 72 ชั่วโมง • เข้ารหัส HMAC-SHA256</p>
+    `;
+  }
+
   return {
     subject: `🔴 แจ้งปัญหา ${taskNumber} — ${issueType}`,
     html: `
@@ -220,7 +235,8 @@ export function emailIssueAlert(taskNumber: string, issueType: string, messenger
             <tr><td style="padding:6px 0;color:#6b7280;">แมสเซ็นเจอร์:</td><td>${messengerName}</td></tr>
             ${description ? `<tr><td style="padding:6px 0;color:#6b7280;">รายละเอียด:</td><td>${description}</td></tr>` : ''}
           </table>
-          <p style="margin:16px 0 0;font-size:13px;color:#9ca3af;">กรุณาตัดสินใจ (คืนเอกสาร / เลื่อนวันส่ง) ที่กระดานจ่ายงาน</p>
+          <p style="margin:16px 0 0;font-size:13px;color:#6b7280;font-weight:600;">กรุณาตัดสินใจ:</p>
+          ${actionButtons}
         </div>
       </div>
     `,

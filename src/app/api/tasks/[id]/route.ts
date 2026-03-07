@@ -254,7 +254,7 @@ async function sendEmailNotification(taskId: number, newStatus: string, notes?: 
         break;
       }
       case 'issue': {
-        const mail = emailIssueAlert(t.TaskNumber, notes || 'ไม่ระบุ', t.MessengerName || '-', notes || '');
+        const mail = emailIssueAlert(t.TaskNumber, notes || 'ไม่ระบุ', t.MessengerName || '-', notes || '', taskId);
         // ส่งให้หัวหน้าแมสเซ็นเจอร์
         if (t.DispatcherEmails) {
           await sendMail({ to: t.DispatcherEmails, ...mail });

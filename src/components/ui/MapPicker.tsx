@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MapPin, X, Loader2 } from 'lucide-react';
+import { MapPin, X, Loader2, Search } from 'lucide-react';
 
 interface MapPickerProps {
   latitude?: string;
@@ -21,13 +21,16 @@ declare global {
 export default function MapPicker({ latitude, longitude, onSelect }: MapPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [searchText, setSearchText] = useState('');
   const mapRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
   const markerInstance = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const autocompleteInstance = useRef<google.maps.places.Autocomplete | null>(null);
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-  // Load Google Maps JavaScript API
+  // Load Google Maps JavaScript API with Places library
   const loadGoogleMaps = useCallback(() => {
     if (window.google?.maps) {
       setIsLoaded(true);
@@ -39,7 +42,6 @@ export default function MapPicker({ latitude, longitude, onSelect }: MapPickerPr
       return;
     }
 
-    // Check if script already loading
     if (document.querySelector('script[src*="maps.googleapis.com"]')) {
       window.initMapPicker = () => setIsLoaded(true);
       return;
@@ -47,11 +49,23 @@ export default function MapPicker({ latitude, longitude, onSelect }: MapPickerPr
 
     window.initMapPicker = () => setIsLoaded(true);
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMapPicker&libraries=marker&language=th`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMapPicker&libraries=marker,places&language=th`;
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
   }, [apiKey]);
+
+  // Move marker + pan map to a location
+  const moveToLocation = useCallback((lat: number, lng: number, zoomLevel?: number) => {
+    const pos = { lat, lng };
+    if (markerInstance.current) {
+      markerInstance.current.position = pos;
+    }
+    if (mapInstance.current) {
+      mapInstance.current.panTo(pos);
+      if (zoomLevel) mapInstance.current.setZoom(zoomLevel);
+    }
+  }, []);
 
   // Initialize map when open + loaded
   useEffect(() => {
@@ -72,7 +86,7 @@ export default function MapPicker({ latitude, longitude, onSelect }: MapPickerPr
 
     mapInstance.current = map;
 
-    // Create marker at initial position
+    // Create marker
     const marker = new google.maps.marker.AdvancedMarkerElement({
       position: { lat: defaultLat, lng: defaultLng },
       map,
@@ -89,11 +103,36 @@ export default function MapPicker({ latitude, longitude, onSelect }: MapPickerPr
       }
     });
 
-    // Drag marker
-    marker.addListener('dragend', () => {
-      // marker position updated automatically
-    });
-  }, [isOpen, isLoaded, latitude, longitude]);
+    // ★ Setup Places Autocomplete on the search input
+    if (searchInputRef.current && google.maps.places) {
+      const autocomplete = new google.maps.places.Autocomplete(searchInputRef.current, {
+        componentRestrictions: { country: 'th' }, // จำกัดประเทศไทย
+        fields: ['geometry', 'name', 'formatted_address'],
+      });
+
+      autocomplete.bindTo('bounds', map);
+
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        if (place.geometry?.location) {
+          const lat = place.geometry.location.lat();
+          const lng = place.geometry.location.lng();
+          moveToLocation(lat, lng, 17);
+          setSearchText(place.name || place.formatted_address || '');
+        }
+      });
+
+      autocompleteInstance.current = autocomplete;
+    }
+
+    // Cleanup
+    return () => {
+      if (autocompleteInstance.current) {
+        google.maps.event.clearInstanceListeners(autocompleteInstance.current);
+        autocompleteInstance.current = null;
+      }
+    };
+  }, [isOpen, isLoaded, latitude, longitude, moveToLocation]);
 
   const handleOpen = () => {
     if (!apiKey) {
@@ -101,6 +140,7 @@ export default function MapPicker({ latitude, longitude, onSelect }: MapPickerPr
       return;
     }
     setIsOpen(true);
+    setSearchText('');
     loadGoogleMaps();
   };
 
@@ -143,6 +183,25 @@ export default function MapPicker({ latitude, longitude, onSelect }: MapPickerPr
               </button>
             </div>
 
+            {/* ★ Search Box */}
+            <div className="px-4 py-2 border-b border-surface-200 dark:border-surface-700">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder="ค้นหาสถานที่... เช่น สยามพารากอน, สุขุมวิท 21"
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
+                             bg-white dark:bg-surface-900 text-surface-800 dark:text-white text-sm
+                             placeholder:text-surface-400
+                             focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                             transition-all"
+                />
+              </div>
+            </div>
+
             {/* Map */}
             <div className="relative">
               {!isLoaded && (
@@ -159,7 +218,7 @@ export default function MapPicker({ latitude, longitude, onSelect }: MapPickerPr
             {/* Footer */}
             <div className="px-4 py-3 border-t border-surface-200 dark:border-surface-700 flex items-center justify-between">
               <p className="text-xs text-surface-500">
-                คลิกหรือลากหมุดเพื่อเลือกตำแหน่ง
+                🔍 ค้นหาหรือคลิก/ลากหมุด
               </p>
               <div className="flex gap-2">
                 <button onClick={() => setIsOpen(false)}

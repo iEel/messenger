@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   Truck,
@@ -91,11 +91,62 @@ export default function DispatcherPage() {
     }
   }, [page, statusFilter, search]);
 
+  // Silent fetch (ไม่แสดง loading spinner) สำหรับ polling
+  const fetchTasksSilent = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: '50',
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(search && { search }),
+      });
+      const res = await fetch(`/api/tasks?${params}`);
+      const data = await res.json();
+      setTasks(data.tasks || []);
+      setTotal(data.total || 0);
+      setLastRefresh(new Date());
+    } catch (error) {
+      console.error('Silent fetch error:', error);
+    }
+  }, [page, statusFilter, search]);
+
   useEffect(() => {
     fetchTasks();
     fetchMessengers();
     fetchOfficeCoords();
   }, [fetchTasks]);
+
+  // Auto-refresh polling (30 วินาที) — หยุดเมื่อ Modal เปิดอยู่
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [countdown, setCountdown] = useState(30);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // เคลียร์ interval เดิมก่อน
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+
+    if (!assignModal) {
+      // รีเซ็ต countdown
+      setCountdown(30);
+
+      // Countdown ทุก 1 วินาที
+      countdownRef.current = setInterval(() => {
+        setCountdown(prev => (prev <= 1 ? 30 : prev - 1));
+      }, 1000);
+
+      // Fetch ทุก 30 วินาที
+      intervalRef.current = setInterval(() => {
+        fetchTasksSilent();
+      }, 30000);
+    }
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
+    };
+  }, [assignModal, fetchTasksSilent]);
 
   const [officeCoords, setOfficeCoords] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -278,7 +329,12 @@ export default function DispatcherPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-surface-800 dark:text-white">กระดานจ่ายงาน</h1>
-            <p className="text-sm text-surface-500 dark:text-surface-400">{total} ใบงานทั้งหมด</p>
+            <p className="text-sm text-surface-500 dark:text-surface-400">
+              {total} ใบงานทั้งหมด
+              <span className="ml-2 text-xs text-surface-400">
+                {assignModal ? '⏸ หยุดรีเฟรช' : `🔄 ${countdown}s`}
+              </span>
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">

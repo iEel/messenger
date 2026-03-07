@@ -458,7 +458,15 @@ cancelled                         issue → return / reschedule
 - ★ **Requester Info on Task Cards** — แสดงชื่อผู้ขอส่ง + แผนก + เบอร์โทร (กดโทรได้) ทั้งหน้าจ่ายงาน + หน้าแมส
   - API เพิ่ม `RequesterPhone`, `RequesterDept` จาก Users JOIN
   - Label ชัดเจน: **ผู้รับ:** / **ผู้ขอส่ง:** ไม่สับสน
-- ★ **Dashboard Role-based** — ซ่อน "Top แมส" จากพนักงาน (requester) แสดงเฉพาะ dispatcher/admin
+- ★ **Dashboard Role-based** — ซ่อน "Top แมสเซ็นเจอร์" จากพนักงาน (requester) แสดงเฉพาะ dispatcher/admin
+- ★ **Dispatcher Self-Assign** — หัวหน้าแมสเซ็นเจอร์มอบหมายงานให้ตัวเองได้ (API `/api/messengers` รวม role dispatcher)
+- ★ **Full-form Naming** — เปลี่ยนคำย่อ "แมส" → "แมสเซ็นเจอร์" ทั้งโปรเจค (12 ไฟล์)
+- ★ **Messenger Card Enhancement** — เพิ่มบริษัทผู้รับ, เขต, ระยะทางจากออฟฟิศ (haversine) + แสดงเบอร์โทรจริง
+- ★ **Email: Microsoft Graph API** — เปลี่ยนจาก SMTP OAuth2 เป็น Graph API (`POST /v1.0/users/{user}/sendMail`)
+  - Azure AD client credentials + token caching
+  - SMTP password เป็น fallback
+  - Endpoint ทดสอบ: `/api/test-email`
+- ★ **Issue Alert → Requester** — แจ้งปัญหาส่ง email ไปหาเจ้าของงาน (requester) ด้วย ไม่ใช่แค่ dispatcher
 
 ---
 

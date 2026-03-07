@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
         await query(`UPDATE Tasks SET Status = 'cancelled', UpdatedAt = GETDATE() WHERE Id = @id`, { id: taskId });
         await query(
           `INSERT INTO TaskStatusHistory (TaskId, Status, ChangedBy, Notes) VALUES (@taskId, 'cancelled', @userId, @notes)`,
-          { taskId, userId, notes: 'ยกเลิกจาก email action' }
+          { taskId, userId, notes: 'นำเอกสารมาคืน (จาก email action)' }
         );
-        return NextResponse.json({ message: `ยกเลิกใบงาน ${task.TaskNumber} เรียบร้อย`, action: 'cancelled' });
+        return NextResponse.json({ message: `นำเอกสาร ${task.TaskNumber} มาคืนเรียบร้อย`, action: 'cancelled' });
       }
 
       case 'reschedule': {
@@ -62,9 +62,9 @@ export async function POST(request: NextRequest) {
         await query(`UPDATE Tasks SET Status = 'new', AssignedTo = NULL, UpdatedAt = GETDATE() WHERE Id = @id`, { id: taskId });
         await query(
           `INSERT INTO TaskStatusHistory (TaskId, Status, ChangedBy, Notes) VALUES (@taskId, 'new', @userId, @notes)`,
-          { taskId, userId, notes: 'ส่งกลับเข้าคิวใหม่จาก email action' }
+          { taskId, userId, notes: 'เลื่อนวันส่งใหม่ (จาก email action)' }
         );
-        return NextResponse.json({ message: `ส่ง ${task.TaskNumber} กลับเข้าคิวใหม่เรียบร้อย`, action: 'rescheduled' });
+        return NextResponse.json({ message: `เลื่อนวันส่ง ${task.TaskNumber} เรียบร้อย`, action: 'rescheduled' });
       }
 
       default:

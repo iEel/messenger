@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { CheckCircle, XCircle, Loader2, AlertTriangle, RefreshCw, Ban } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, AlertTriangle, CalendarClock, PackageCheck } from 'lucide-react';
 
 function EmailActionContent() {
   const searchParams = useSearchParams();
@@ -64,8 +64,8 @@ function EmailActionContent() {
   };
 
   const actionLabels: Record<string, { label: string; desc: string; color: string; icon: React.ReactNode }> = {
-    cancel: { label: 'ยกเลิกใบงาน', desc: 'ใบงานจะถูกยกเลิกและไม่สามารถจ่ายงานได้อีก', color: '#ef4444', icon: <Ban size={24} /> },
-    reschedule: { label: 'ส่งกลับเข้าคิวใหม่', desc: 'ใบงานจะกลับเป็นสถานะรอจ่ายงาน เพื่อจ่ายงานให้แมสเซ็นเจอร์คนอื่น', color: '#f59e0b', icon: <RefreshCw size={24} /> },
+    cancel: { label: 'นำเอกสารมาคืน', desc: 'แมสเซ็นเจอร์จะนำเอกสารกลับมาที่ออฟฟิศ', color: '#ef4444', icon: <PackageCheck size={24} /> },
+    reschedule: { label: 'เลื่อนวันส่งใหม่', desc: 'ใบงานจะกลับเป็นสถานะรอจ่ายงาน เพื่อจ่ายงานให้แมสเซ็นเจอร์อีกครั้ง', color: '#f59e0b', icon: <CalendarClock size={24} /> },
   };
 
   const actionConf = actionLabels[action] || { label: action, desc: '', color: '#6366f1', icon: <AlertTriangle size={24} /> };

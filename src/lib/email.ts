@@ -218,8 +218,8 @@ export function emailIssueAlert(
     const rescheduleUrl = buildEmailActionUrl(taskId, 'reschedule', requesterId);
     actionButtons = `
       <div style="margin-top:16px;display:flex;gap:8px;">
-        <a href="${rescheduleUrl}" style="flex:1;display:block;padding:12px 0;text-align:center;border-radius:10px;background:#f59e0b;color:white;font-weight:700;font-size:14px;text-decoration:none;">🔄 ส่งกลับเข้าคิว</a>
-        <a href="${cancelUrl}" style="flex:1;display:block;padding:12px 0;text-align:center;border-radius:10px;background:#ef4444;color:white;font-weight:700;font-size:14px;text-decoration:none;">✕ ยกเลิกงาน</a>
+        <a href="${cancelUrl}" style="flex:1;display:block;padding:12px 0;text-align:center;border-radius:10px;background:#ef4444;color:white;font-weight:700;font-size:14px;text-decoration:none;">📦 นำเอกสารมาคืน</a>
+        <a href="${rescheduleUrl}" style="flex:1;display:block;padding:12px 0;text-align:center;border-radius:10px;background:#f59e0b;color:white;font-weight:700;font-size:14px;text-decoration:none;">📅 เลื่อนวันส่งใหม่</a>
       </div>
       <p style="margin:8px 0 0;font-size:10px;color:#d1d5db;text-align:center;">ลิงก์มีอายุ 72 ชั่วโมง • เข้ารหัส HMAC-SHA256</p>
     `;

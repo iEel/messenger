@@ -368,6 +368,15 @@ cancelled                         issue → return / reschedule
   - Helper: `formatDateTime`, `formatDateTimeShort`, `formatDate`, `formatDateFull`
   - อัปเดตทั้งระบบ (7 ไฟล์) ให้ใช้ helper กลาง
 
+### Phase 7 — Auto-Refresh Polling ★ (ใหม่)
+- ★ **กระดานจ่ายงาน** (`/dispatcher`) — polling ทุก 30 วินาที
+  - Silent fetch (ไม่แสดง loading spinner)
+  - หยุด polling อัตโนมัติเมื่อ Modal จ่ายงานเปิดอยู่ (⏸ หยุดรีเฟรช)
+  - แสดง countdown (🔄 25s) ข้างจำนวนใบงาน
+- ★ **หน้าแมสเซ็นเจอร์** (`/messenger`) — polling ทุก 30 วินาที
+  - งานใหม่ที่หัวหน้าจ่ายมาโผล่อัตโนมัติ
+  - แสดง countdown ข้างหัวข้อ "งานของฉัน"
+
 ---
 
 ## 9. สิ่งที่ยังไม่ได้ทำ ❌ (เรียงตามความสำคัญ)
@@ -376,18 +385,17 @@ cancelled                         issue → return / reschedule
 
 | # | ฟีเจอร์ | รายละเอียด |
 |---|---------|-----------|
-| 1 | **Real-time Update** | ใช้ polling ทุก 30 วินาที หรือ WebSocket ให้แดชบอร์ด Dispatcher update อัตโนมัติ |
-| 2 | **Export CSV/Excel** | ส่งออกรายงาน (ใช้ `xlsx` หรือ `csv-stringify`) |
+| 1 | **Export CSV/Excel** | ส่งออกรายงาน (ใช้ `xlsx` หรือ `csv-stringify`) |
 
 ### 🟢 ภายหลัง
 
 | # | ฟีเจอร์ | รายละเอียด |
 |---|---------|-----------|
-| 3 | **PWA + Offline** | `manifest.json` + Service Worker + ใช้ `next-pwa` package |
-| 4 | **Reusable UI Components** | แยก Button, Modal, Table, Badge เป็น component กลาง ใน `components/ui/` |
-| 5 | **Map Picker** | Maps JavaScript API ปักหมุดเลือกพิกัดบนแผนที่ |
+| 2 | **PWA + Offline** | `manifest.json` + Service Worker + ใช้ `next-pwa` package |
+| 3 | **Reusable UI Components** | แยก Button, Modal, Table, Badge เป็น component กลาง ใน `components/ui/` |
+| 4 | **Map Picker** | Maps JavaScript API ปักหมุดเลือกพิกัดบนแผนที่ |
 
-> **หมายเหตุ:** ฟีเจอร์ที่ย้ายไป ✅ แล้ว: คำนวณระยะทาง, อีเมลแจ้งเตือน, Zone Clustering (basic), งานไป-กลับ Flow, **File Upload POD**, **Date Formatting**
+> **หมายเหตุ:** ฟีเจอร์ที่ย้ายไป ✅ แล้ว: คำนวณระยะทาง, อีเมลแจ้งเตือน, Zone Clustering (basic), งานไป-กลับ Flow, **File Upload POD**, **Date Formatting**, **Auto-Refresh Polling**
 
 ---
 

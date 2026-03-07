@@ -206,7 +206,10 @@ export function emailTaskAssigned(taskNumber: string, documentDesc: string, reci
   };
 }
 
-export function emailIssueAlert(taskNumber: string, issueType: string, messengerName: string, description: string, taskId?: number) {
+export function emailIssueAlert(
+  taskNumber: string, issueType: string, messengerName: string, description: string,
+  taskId?: number, taskInfo?: { documentDesc: string; recipientName: string; address: string }
+) {
   // สร้างปุ่ม action ถ้ามี taskId
   let actionButtons = '';
   if (taskId) {
@@ -231,10 +234,20 @@ export function emailIssueAlert(taskNumber: string, issueType: string, messenger
         </div>
         <div style="background:#fef2f2;padding:20px;border:1px solid #fecaca;border-top:0;border-radius:0 0 16px 16px;">
           <table style="width:100%;font-size:14px;">
-            <tr><td style="padding:6px 0;color:#6b7280;">ประเภท:</td><td style="font-weight:600;color:#dc2626;">${issueType}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">ประเภทปัญหา:</td><td style="font-weight:600;color:#dc2626;">${issueType}</td></tr>
             <tr><td style="padding:6px 0;color:#6b7280;">แมสเซ็นเจอร์:</td><td>${messengerName}</td></tr>
             ${description ? `<tr><td style="padding:6px 0;color:#6b7280;">รายละเอียด:</td><td>${description}</td></tr>` : ''}
           </table>
+          ${taskInfo ? `
+          <div style="margin-top:14px;padding:12px;background:white;border-radius:8px;border:1px solid #fecaca;">
+            <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#6b7280;">📋 รายละเอียดใบงาน</p>
+            <table style="width:100%;font-size:13px;">
+              <tr><td style="padding:3px 0;color:#9ca3af;width:70px;">เอกสาร:</td><td style="font-weight:600;">${taskInfo.documentDesc}</td></tr>
+              <tr><td style="padding:3px 0;color:#9ca3af;">ส่งถึง:</td><td>${taskInfo.recipientName}</td></tr>
+              <tr><td style="padding:3px 0;color:#9ca3af;">ที่อยู่:</td><td>${taskInfo.address}</td></tr>
+            </table>
+          </div>
+          ` : ''}
           <p style="margin:16px 0 0;font-size:13px;color:#6b7280;font-weight:600;">กรุณาตัดสินใจ:</p>
           ${actionButtons}
         </div>

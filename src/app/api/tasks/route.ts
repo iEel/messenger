@@ -62,8 +62,8 @@ export async function GET(request: NextRequest) {
 
     if (status && status !== 'all') {
       if (status === 'active') {
-        // ★ แสดงเฉพาะงานที่ยังไม่จบ (ไม่รวม completed/returned)
-        whereClause += " AND t.Status NOT IN ('completed','returned')";
+        // ★ แสดงเฉพาะงานที่ยังไม่จบ (ไม่รวม completed/returned/cancelled)
+        whereClause += " AND t.Status NOT IN ('completed','returned','cancelled')";
       } else {
         whereClause += ' AND t.Status = @status';
         params.status = status;

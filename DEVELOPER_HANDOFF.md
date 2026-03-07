@@ -454,6 +454,7 @@ cancelled                         issue → return / reschedule
   - API รองรับ `status=active` filter
 - ★ **App Icon Branding** — ใช้ icon เดียวกันทั้งระบบ (favicon, sidebar, login, PWA)
 - ★ **Analytics SQL Fix** — แก้ AVG ครอบ subquery (ใช้ CROSS APPLY) + แก้ ChangedAt → CreatedAt
+- ★ **Navigation travelmode Fix** — แก้ `travelmode=two_wheeler` → `driving` ในURL เปิด Google Maps (two_wheeler ใช้ได้เฉพาะ Routes API v2 backend เท่านั้น)
 
 ---
 

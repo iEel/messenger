@@ -29,6 +29,7 @@ export default function DeliveryPage() {
   const [success, setSuccess] = useState(false);
   const [taskType, setTaskType] = useState<string>('oneway');
   const [isRoundtrip, setIsRoundtrip] = useState(false);
+  const [isReturning, setIsReturning] = useState(false); // ★ โหมดคืนเอกสาร (ถ่ายรูปเช็ค)
   const [uploadProgress, setUploadProgress] = useState('');
 
   // Fetch task info to check if roundtrip
@@ -39,6 +40,10 @@ export default function DeliveryPage() {
         if (data.task) {
           setTaskType(data.task.TaskType);
           setIsRoundtrip(data.task.TaskType === 'roundtrip');
+          // ★ ตรวจสถานะ returning → โหมดถ่ายรูปเช็ค
+          if (data.task.Status === 'returning') {
+            setIsReturning(true);
+          }
         }
       })
       .catch(console.error);
@@ -99,8 +104,13 @@ export default function DeliveryPage() {
   };
 
   const handleSubmit = async () => {
-    if (!signature) {
+    // ★ โหมดคืนเอกสาร: ต้องถ่ายรูปแต่ไม่ต้องเซ็นชื่อ
+    if (!isReturning && !signature) {
       alert('กรุณาให้ผู้รับเซ็นชื่อ');
+      return;
+    }
+    if (isReturning && photos.length === 0) {
+      alert('กรุณาถ่ายรูปเอกสาร/เช็คที่รับกลับมา');
       return;
     }
 
@@ -112,29 +122,37 @@ export default function DeliveryPage() {
         await uploadFile(photos[i].file, 'photo');
       }
 
-      // 2. อัปโหลดลายเซ็น
-      setUploadProgress('บันทึกลายเซ็น...');
-      const signatureBlob = dataUrlToBlob(signature);
-      await uploadFile(signatureBlob, 'signature', 'signature.png');
+      // 2. อัปโหลดลายเซ็น (ถ้ามี — โหมดคืนเอกสารไม่ต้อง)
+      if (signature) {
+        setUploadProgress('บันทึกลายเซ็น...');
+        const signatureBlob = dataUrlToBlob(signature);
+        await uploadFile(signatureBlob, 'signature', 'signature.png');
+      }
 
       // 3. อัปเดตสถานะ
       setUploadProgress('อัปเดตสถานะ...');
-      const podNotes = [
-        `ผู้รับ: ${receiverName || '-'}`,
-        `รูปถ่าย: ${photos.length} รูป`,
-        notes ? `หมายเหตุ: ${notes}` : '',
-      ].filter(Boolean).join(' | ');
+      const podNotes = isReturning
+        ? [
+            `คืนเอกสาร/เช็ค: ${photos.length} รูป`,
+            notes ? `หมายเหตุ: ${notes}` : '',
+          ].filter(Boolean).join(' | ')
+        : [
+            `ผู้รับ: ${receiverName || '-'}`,
+            `รูปถ่าย: ${photos.length} รูป`,
+            notes ? `หมายเหตุ: ${notes}` : '',
+          ].filter(Boolean).join(' | ');
 
-      // Roundtrip: ส่งสำเร็จ → เปลี่ยนเป็น return_picked_up (รอรับเอกสารกลับ)
-      // Oneway: ส่งสำเร็จ → completed
-      const nextStatus = isRoundtrip ? 'return_picked_up' : 'completed';
+      // ★ returning → returned (คืนเอกสาร)
+      // ★ roundtrip in_transit → return_picked_up (รอรับเอกสารกลับ)
+      // ★ oneway in_transit → completed
+      const nextStatus = isReturning ? 'returned' : (isRoundtrip ? 'return_picked_up' : 'completed');
 
       await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: nextStatus,
-          notes: podNotes + (isRoundtrip ? ' | 🔄 รอรับเอกสารกลับ' : ''),
+          notes: podNotes + (isReturning ? ' | 📦 คืนเอกสารแล้ว' : isRoundtrip ? ' | 🔄 รอรับเอกสารกลับ' : ''),
         }),
       });
 

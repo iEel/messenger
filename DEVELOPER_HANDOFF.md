@@ -116,16 +116,17 @@ d:\Antigravity\messenger\
 │   │   │   ├── tasks/                 ← รายการ/สร้าง/รายละเอียดใบงาน
 │   │   │   ├── tasks/[id]/edit/       ← ★ แก้ไขใบงาน
 │   │   │   ├── dispatcher/            ← จ่ายงาน + รายงาน + ระยะทาง
-│   │   │   └── messenger/             ← Hub แมส + ส่งเอกสาร + แจ้งปัญหา
+│   │   │   └── messenger/             ← Hub แมส + ส่งเอกสาร + แจ้งปัญหา + ★ Drag&Drop + Smart Routing
 │   │   ├── api/
 │   │   │   ├── auth/[...nextauth]/    ← NextAuth handler
 │   │   │   ├── analytics/             ← API รายงาน
-│   │   │   ├── distance/              ← ★ API คำนวณระยะทาง
+│   │   │   ├── distance/              ← ★ API คำนวณระยะทาง (Routes API v2)
 │   │   │   ├── maps-resolve/          ← ★ Resolve short URL (goo.gl)
 │   │   │   ├── messengers/            ← ดึงรายชื่อแมส
+│   │   │   ├── routes/optimize/       ← ★ Route Optimization (จัดเส้นทาง + Priority lock)
 │   │   │   ├── settings/              ← ★ API ตั้งค่าระบบ (GET/PATCH)
 │   │   │   ├── tasks/                 ← CRUD ใบงาน (GET/POST/PATCH/PUT) + POD data
-│   │   │   ├── trips/                 ← เริ่ม/จบรอบวิ่ง
+│   │   │   ├── trips/                 ← เริ่ม/จบรอบวิ่ง + ★ Loop Closing
 │   │   │   ├── upload/                ← ★ อัปโหลดไฟล์ POD (photo/signature)
 │   │   │   ├── uploads/[...path]/     ← ★ Serve ไฟล์อัปโหลด (auth protected)
 │   │   │   └── users/                 ← CRUD ผู้ใช้
@@ -136,6 +137,10 @@ d:\Antigravity\messenger\
 │   ├── components/
 │   │   ├── layout/Sidebar.tsx         ← Sidebar (role-based nav)
 │   │   ├── ui/AddressAutocomplete.tsx ← ค้นหาที่อยู่ไทย
+│   │   ├── ui/Badge.tsx              ← ★ Reusable Badge (6 variants + pulse)
+│   │   ├── ui/Button.tsx             ← ★ Reusable Button (4 variants + loading + icon)
+│   │   ├── ui/MapPicker.tsx          ← ★ Google Maps ปักหมุดเลือกพิกัด
+│   │   ├── ui/Modal.tsx              ← ★ Reusable Modal (Esc/overlay close + sizes)
 │   │   ├── ui/PhoneInput.tsx          ← ★ เบอร์โทรไทย (mask + validation)
 │   │   ├── ui/SignaturePad.tsx        ← Canvas เซ็นชื่อ
 │   │   ├── Providers.tsx              ← SessionProvider wrapper
@@ -145,11 +150,16 @@ d:\Antigravity\messenger\
 │       ├── auth.ts                    ← NextAuth config
 │       ├── date-utils.ts              ← ★ Format วันเวลา (แก้ timezone + ปี ค.ศ.)
 │       ├── db.ts                      ← SQL Server connection
-│       ├── distance.ts                ← ★ Google Maps + Haversine
-│       ├── email.ts                   ← Email templates
+│       ├── distance.ts                ← ★ Routes API v2 (TWO_WHEELER) + Haversine + Route Optimization
+│       ├── route-cache.ts             ← ★ In-memory cache (ลด API calls → ประหยัดค่าใช้จ่าย)
+│       ├── email.ts                   ← ★ Email templates (6 templates incl. returned + POD link)
 │       ├── types.ts                   ← TypeScript types + STATUS_CONFIG
 │       └── thailand-address.ts        ← ที่อยู่ไทย 7,436 ตำบล
 │
+├── public/
+│   ├── manifest.json              ← ★ PWA manifest
+│   ├── sw.js                      ← ★ Service Worker (offline + background sync)
+│   └── icons/                     ← ★ PWA icons (192 + 512)
 ├── .env.local
 ├── package.json
 ├── next.config.ts
@@ -257,31 +267,36 @@ erDiagram
 | PATCH | `/api/tasks/[id]` | อัปเดตสถานะ / assign / cancel |
 | PUT | `/api/tasks/[id]` | ★ แก้ไขข้อมูลใบงาน (เฉพาะ status=new, owner/admin) |
 
-### 6.4 Distance & Maps
+### 6.4 Distance & Maps ★ (อัปเกรด Routes API v2)
 | Method | Path | คำอธิบาย |
 |--------|------|----------|
-| GET | `/api/distance` | ★ คำนวณระยะทาง (`?taskId=` หรือ `?fromLat=&fromLng=&toLat=&toLng=`) |
+| GET | `/api/distance` | ★ คำนวณระยะทาง Routes API v2 TWO_WHEELER + cache (`?taskId=` หรือ `?fromLat=&fromLng=&toLat=&toLng=`) |
 | GET | `/api/maps-resolve` | ★ Resolve short URL → ดึง lat/lng (`?url=https://maps.app.goo.gl/xxx`) |
 
-### 6.5 Settings
+### 6.5 Route Optimization ★ (ใหม่)
+| Method | Path | คำอธิบาย |
+|--------|------|----------|
+| POST | `/api/routes/optimize` | ★ จัดเส้นทาง (body: `{taskIds}`, ล็อค urgent เป็นลำดับ 1, `optimizeWaypointOrder`) |
+
+### 6.6 Settings
 | Method | Path | คำอธิบาย |
 |--------|------|----------|
 | GET | `/api/settings` | ★ ดึงค่าตั้งค่าทั้งหมด |
 | PATCH | `/api/settings` | ★ อัปเดตค่าตั้งค่า (admin only, MERGE upsert) |
 
-### 6.6 Trips
+### 6.7 Trips
 | Method | Path | คำอธิบาย |
 |--------|------|----------|
 | GET | `/api/trips` | รอบวิ่งของแมส (`?status=active`) |
 | POST | `/api/trips` | เริ่มรอบวิ่งใหม่ |
-| PATCH | `/api/trips/[id]` | จบรอบวิ่ง |
+| PATCH | `/api/trips/[id]` | ★ จบรอบวิ่ง + Loop Closing (คำนวณระยะทาง office→tasks→office) |
 
-### 6.7 Analytics
+### 6.8 Analytics
 | Method | Path | คำอธิบาย |
 |--------|------|----------|
 | GET | `/api/analytics` | สถิติวันนี้, 7 วันย้อนหลัง, Top 5 แมส |
 
-### 6.8 Upload & Files ★ (ใหม่)
+### 6.9 Upload & Files
 | Method | Path | คำอธิบาย |
 |--------|------|----------|
 | POST | `/api/upload` | ★ อัปโหลดไฟล์ POD (FormData: file, taskId, type=photo/signature) |
@@ -345,7 +360,7 @@ cancelled                         issue → return / reschedule
 - **Proof of Delivery** — ถ่ายรูป (max 3) + เซ็นชื่อ Canvas + ชื่อผู้รับจริง
 
 ### Phase 5 — ระบบสนับสนุน
-- ★ **คำนวณระยะทาง** — Google Maps Directions API + Haversine fallback
+- ★ **คำนวณระยะทาง** — ~~Google Maps Directions API~~ → ★ **Routes API v2 (TWO_WHEELER)** + Haversine fallback
   - API endpoint `/api/distance` (office→task หรือ custom coords)
   - แสดงระยะทาง+เวลาเดินทาง auto ในหน้ารายละเอียดใบงาน
   - ระบุแหล่งข้อมูล (📡 Google Maps / 📐 ประมาณ)
@@ -355,7 +370,7 @@ cancelled                         issue → return / reschedule
   - ตารางแสดง raw settings ทั้งหมด
   - API `/api/settings` (GET/PATCH with MERGE upsert)
 
-### Phase 6 — POD File Upload + Date Formatting ★ (ใหม่)
+### Phase 6 — POD File Upload + Date Formatting
 - ★ **File Upload จริง (POD)** — ถ่ายรูป + เซ็นชื่อ save ลง server จริง
   - API endpoint `POST /api/upload` (FormData: file, taskId, type)
   - Save ไฟล์ลง `./uploads/pod/{taskId}/` + บันทึกลงตาราง `ProofOfDelivery`
@@ -368,7 +383,7 @@ cancelled                         issue → return / reschedule
   - Helper: `formatDateTime`, `formatDateTimeShort`, `formatDate`, `formatDateFull`
   - อัปเดตทั้งระบบ (7 ไฟล์) ให้ใช้ helper กลาง
 
-### Phase 7 — Auto-Refresh Polling ★ (ใหม่)
+### Phase 7 — Auto-Refresh Polling
 - ★ **กระดานจ่ายงาน** (`/dispatcher`) — polling ทุก 30 วินาที
   - Silent fetch (ไม่แสดง loading spinner)
   - หยุด polling อัตโนมัติเมื่อ Modal จ่ายงานเปิดอยู่ (⏸ หยุดรีเฟรช)
@@ -377,25 +392,60 @@ cancelled                         issue → return / reschedule
   - งานใหม่ที่หัวหน้าจ่ายมาโผล่อัตโนมัติ
   - แสดง countdown ข้างหัวข้อ "งานของฉัน"
 
+### Phase 8 — Routes API v2 + Smart Routing ★ (ใหม่)
+- ★ **อัปเกรด Routes API v2** — ย้ายจาก Directions API (legacy) → Routes API v2
+  - `travelMode: TWO_WHEELER` (มอเตอร์ไซค์ — เลี่ยงทางด่วน)
+  - `routingPreference: TRAFFIC_AWARE` (คำนวณตามสภาพจราจร)
+  - **Field Mask ขั้นต่ำ** → ประหยัดค่า billing (~$22.50/เดือน จาก $200 ฟรี)
+  - **In-memory cache** (`lib/route-cache.ts`) — TTL 5 นาที, 500 entries → ไม่เรียก API ซ้ำ
+- ★ **Route Optimization** (จัดเส้นทางอัตโนมัติ)
+  - API endpoint `POST /api/routes/optimize` — ส่ง taskIds → ได้ลำดับที่เร็วที่สุด
+  - `optimizeWaypointOrder: true` → Google จัดเรียงเส้นทาง
+  - **Priority Routing** — งานด่วน (urgent) ถูกล็อคเป็น Waypoint ลำดับ 1 เสมอ
+  - Haversine nearest-neighbor fallback (ถ้าไม่มี API key)
+- ★ **Drag & Drop** (จัดคิวงานด้วยตัวเอง)
+  - HTML5 Drag & Drop + Touch support (ใช้งานบน Mobile Web ได้)
+  - แสดงลำดับคิว (🔢) บนแต่ละการ์ด
+  - ลากสลับลำดับได้อิสระหลังจาก Auto-Sort
+- ★ **Navigate Full Trip** (นำทางทั้งรอบ)
+  - ปุ่มกดเปิด Google Maps พร้อม waypoints ทั้งหมดตามลำดับ (สูงสุด 9 จุด)
+  - `travelmode=two_wheeler` (โหมดมอเตอร์ไซค์)
+- ★ **Loop Closing** (คำนวณระยะทางรอบวิ่ง)
+  - เมื่อกด "จบรอบวิ่ง" → คำนวณ office→tasks→office ด้วย Haversine (ฟรี)
+  - บันทึกลง `TotalDistanceKm` ในตาราง `Trips`
+
+### Phase 9 — Analytics + Email + Round-trip ★ (ใหม่)
+- ★ **Workload รายวัน** — ตารางแมสแต่ละคน (งานทั้งหมด/สำเร็จ/กำลังทำ/ปัญหา + progress bar)
+- ★ **ระยะทางรวม + เวลาเฉลี่ย** — card สรุปรอบวิ่งวันนี้ (รอบ/km/นาที)
+- ★ **Export CSV** — ปุ่มดาวน์โหลด CSV (client-side, ไม่ต้อง library เพิ่ม, UTF-8 BOM รองรับ Excel ไทย)
+- ★ **Round-trip บังคับถ่ายรูปเช็ค** — returning → redirect ไป deliver page (บังคับถ่ายรูป, ไม่ต้องเซ็นชื่อ)
+- ★ **Email คืนเอกสาร** — `emailDocumentReturned()` template ใหม่
+- ★ **POD link ใน email** — `emailTaskCompleted()` + `podUrl` parameter
+- ★ **Fix `returned` count** — analytics นับ `returned` รวมเป็น completed
+
+### Phase 10 — PWA + Map Picker + UI Components ★ (ใหม่)
+- ★ **Map Picker** (`components/ui/MapPicker.tsx`)
+  - Google Maps JavaScript API ปักหมุดเลือกพิกัดบนแผนที่ (click + drag)
+  - Modal overlay พร้อมปุ่ม "ยืนยันตำแหน่ง"
+  - ติดตั้งในหน้าสร้างใบงาน (ใต้ช่อง Google Maps URL)
+- ★ **PWA + Offline Mode**
+  - `manifest.json` (standalone, icons, theme color)
+  - `sw.js` Service Worker (network-first + IndexedDB offline queue)
+  - Service Worker registration ใน root layout
+  - Apple meta tags (apple-mobile-web-app-capable)
+  - รองรับ install prompt บนมือถือ (Add to Home Screen)
+- ★ **Reusable UI Components** (`components/ui/`)
+  - `Button.tsx` — 4 variants (primary/secondary/danger/ghost) + 3 sizes + loading + icon
+  - `Modal.tsx` — Esc key + overlay close + title/icon/footer + 3 sizes
+  - `Badge.tsx` — 6 color variants + pulse animation
+
 ---
 
-## 9. สิ่งที่ยังไม่ได้ทำ ❌ (เรียงตามความสำคัญ)
+## 9. สิ่งที่ยังไม่ได้ทำ ❌
 
-### 🟡 สำคัญปานกลาง
+ไม่มีแล้วครับ — gap analysis 20 ข้อปิดหมดแล้ว ✅
 
-| # | ฟีเจอร์ | รายละเอียด |
-|---|---------|-----------|
-| 1 | **Export CSV/Excel** | ส่งออกรายงาน (ใช้ `xlsx` หรือ `csv-stringify`) |
-
-### 🟢 ภายหลัง
-
-| # | ฟีเจอร์ | รายละเอียด |
-|---|---------|-----------|
-| 2 | **PWA + Offline** | `manifest.json` + Service Worker + ใช้ `next-pwa` package |
-| 3 | **Reusable UI Components** | แยก Button, Modal, Table, Badge เป็น component กลาง ใน `components/ui/` |
-| 4 | **Map Picker** | Maps JavaScript API ปักหมุดเลือกพิกัดบนแผนที่ |
-
-> **หมายเหตุ:** ฟีเจอร์ที่ย้ายไป ✅ แล้ว: คำนวณระยะทาง, อีเมลแจ้งเตือน, Zone Clustering (basic), งานไป-กลับ Flow, **File Upload POD**, **Date Formatting**, **Auto-Refresh Polling**
+> **หมายเหตุ:** ฟีเจอร์ที่ย้ายไป ✅ แล้ว: คำนวณระยะทาง, อีเมลแจ้งเตือน, Zone Clustering, งานไป-กลับ Flow, **File Upload POD**, **Date Formatting**, **Auto-Refresh Polling**, **Routes API v2**, **Smart Routing**, **Loop Closing**, **Workload**, **Export CSV**, **ถ่ายรูปเช็ค**, **Email คืนเอกสาร**, **Map Picker**, **PWA**, **Reusable UI**
 
 ---
 

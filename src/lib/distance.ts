@@ -1,4 +1,7 @@
-// Google Maps Routes API & Haversine fallback สำหรับคำนวณระยะทาง
+// Google Maps Routes API v2 (TWO_WHEELER) & Haversine fallback
+// 💰 ออกแบบให้ประหยัด: Field Mask ขั้นต่ำ + Cache + Haversine fallback
+
+import { routeCache, RouteCache } from './route-cache';
 
 interface LatLng {
   lat: number;
@@ -11,7 +14,17 @@ interface DistanceResult {
   source: 'google' | 'haversine';
 }
 
-// Haversine formula — คำนวณระยะทางแบบเส้นตรง (fallback)
+interface OptimizeResult {
+  optimizedOrder: number[];
+  totalDistanceKm: number;
+  totalDurationMinutes: number;
+  legs: { distanceKm: number; durationMinutes: number }[];
+  source: 'google' | 'haversine';
+}
+
+// ============================================================
+// Haversine formula — คำนวณระยะทางแบบเส้นตรง (ฟรี ไม่เรียก API)
+// ============================================================
 export function haversineDistance(from: LatLng, to: LatLng): number {
   const R = 6371; // Earth radius in km
   const dLat = toRad(to.lat - from.lat);
@@ -28,67 +41,244 @@ function toRad(deg: number): number {
   return deg * (Math.PI / 180);
 }
 
-// Google Maps Routes API (Directions)
+// Haversine result helper
+function haversineResult(from: LatLng, to: LatLng): DistanceResult {
+  const km = haversineDistance(from, to);
+  return {
+    distanceKm: Math.round(km * 100) / 100,
+    durationMinutes: Math.round((km / 25) * 60), // ประมาณ 25 km/h ในเมือง
+    source: 'haversine',
+  };
+}
+
+// ============================================================
+// Routes API v2 — computeRoutes (TWO_WHEELER)
+// 💰 ใช้ Field Mask ขั้นต่ำ → ลดค่าใช้จ่าย
+// ============================================================
 export async function calculateRoute(from: LatLng, to: LatLng): Promise<DistanceResult> {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-  // ถ้าไม่มี API Key ใช้ Haversine
+  // ถ้าไม่มี API Key → ใช้ Haversine (ฟรี)
   if (!apiKey) {
-    const km = haversineDistance(from, to);
-    // ประมาณเวลา: 25 km/h (เฉลี่ยในเมือง กรุงเทพฯ)
-    return {
-      distanceKm: Math.round(km * 100) / 100,
-      durationMinutes: Math.round((km / 25) * 60),
-      source: 'haversine',
-    };
+    return haversineResult(from, to);
+  }
+
+  // ตรวจ cache ก่อน
+  const cacheKey = RouteCache.routeKey(from.lat, from.lng, to.lat, to.lng);
+  const cached = routeCache.get<DistanceResult>(cacheKey);
+  if (cached) {
+    console.log('[Distance] Cache hit:', cacheKey);
+    return cached;
   }
 
   try {
-    // ใช้ Directions API (legacy, ง่ายกว่า Routes API v2)
-    const url = `https://maps.googleapis.com/maps/api/directions/json?` +
-      `origin=${from.lat},${from.lng}` +
-      `&destination=${to.lat},${to.lng}` +
-      `&mode=driving` +
-      `&language=th` +
-      `&key=${apiKey}`;
+    // Routes API v2 endpoint
+    const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
 
-    const res = await fetch(url);
+    const body = {
+      origin: {
+        location: {
+          latLng: { latitude: from.lat, longitude: from.lng },
+        },
+      },
+      destination: {
+        location: {
+          latLng: { latitude: to.lat, longitude: to.lng },
+        },
+      },
+      travelMode: 'TWO_WHEELER',
+      routingPreference: 'TRAFFIC_AWARE',
+      languageCode: 'th',
+      units: 'METRIC',
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        // 💰 Field Mask ขั้นต่ำ — ขอเฉพาะ distance + duration
+        'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
+      },
+      body: JSON.stringify(body),
+    });
+
     const data = await res.json();
 
-    if (data.status === 'OK' && data.routes?.length > 0) {
-      const leg = data.routes[0].legs[0];
-      return {
-        distanceKm: Math.round((leg.distance.value / 1000) * 100) / 100,
-        durationMinutes: Math.round(leg.duration.value / 60),
+    if (data.routes && data.routes.length > 0) {
+      const route = data.routes[0];
+      const result: DistanceResult = {
+        distanceKm: Math.round((route.distanceMeters / 1000) * 100) / 100,
+        durationMinutes: Math.round(parseInt(route.duration.replace('s', '')) / 60),
         source: 'google',
       };
+
+      // เก็บ cache
+      routeCache.set(cacheKey, result);
+      console.log('[Distance] Google Routes API v2 (TWO_WHEELER):', result.distanceKm, 'km');
+      return result;
     }
 
     // Fallback ถ้า Google ไม่ return result
-    const km = haversineDistance(from, to);
-    return {
-      distanceKm: Math.round(km * 100) / 100,
-      durationMinutes: Math.round((km / 25) * 60),
-      source: 'haversine',
-    };
+    console.warn('[Distance] No routes returned, using Haversine fallback');
+    return haversineResult(from, to);
   } catch (error) {
-    console.error('[Distance] Google Maps API error:', error);
-    const km = haversineDistance(from, to);
-    return {
-      distanceKm: Math.round(km * 100) / 100,
-      durationMinutes: Math.round((km / 25) * 60),
-      source: 'haversine',
-    };
+    console.error('[Distance] Routes API v2 error:', error);
+    return haversineResult(from, to);
   }
 }
 
-// ฟอร์แมตระยะทาง
+// ============================================================
+// Route Optimization — computeRoutes + optimizeWaypointOrder
+// 💰 เรียก 1 ครั้ง ได้ลำดับที่ดีที่สุดทั้งรอบ (ไม่ต้องเรียกแยกทีละจุด)
+// ============================================================
+export async function calculateOptimizedRoute(
+  origin: LatLng,
+  destination: LatLng,
+  waypoints: LatLng[],
+): Promise<OptimizeResult> {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  // Haversine fallback: เรียงตามระยะทางจาก origin (nearest-neighbor greedy)
+  if (!apiKey || waypoints.length === 0) {
+    return haversineOptimize(origin, destination, waypoints);
+  }
+
+  // ตรวจ cache
+  const cacheKey = RouteCache.optimizeKey(
+    RouteCache.coordKey(origin.lat, origin.lng),
+    RouteCache.coordKey(destination.lat, destination.lng),
+    waypoints.length,
+  );
+  const cached = routeCache.get<OptimizeResult>(cacheKey);
+  if (cached) {
+    console.log('[Optimize] Cache hit');
+    return cached;
+  }
+
+  try {
+    const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+
+    const body = {
+      origin: {
+        location: { latLng: { latitude: origin.lat, longitude: origin.lng } },
+      },
+      destination: {
+        location: { latLng: { latitude: destination.lat, longitude: destination.lng } },
+      },
+      intermediates: waypoints.map(wp => ({
+        location: { latLng: { latitude: wp.lat, longitude: wp.lng } },
+      })),
+      travelMode: 'TWO_WHEELER',
+      optimizeWaypointOrder: true,
+      languageCode: 'th',
+      units: 'METRIC',
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        // 💰 Field Mask ขั้นต่ำ — ขอเฉพาะ optimized order + distance + duration + legs
+        'X-Goog-FieldMask': 'routes.optimizedIntermediateWaypointIndex,routes.distanceMeters,routes.duration,routes.legs.distanceMeters,routes.legs.duration',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+
+    if (data.routes && data.routes.length > 0) {
+      const route = data.routes[0];
+      const result: OptimizeResult = {
+        optimizedOrder: route.optimizedIntermediateWaypointIndex || waypoints.map((_, i) => i),
+        totalDistanceKm: Math.round((route.distanceMeters / 1000) * 100) / 100,
+        totalDurationMinutes: Math.round(parseInt(route.duration.replace('s', '')) / 60),
+        legs: (route.legs || []).map((leg: { distanceMeters: number; duration: string }) => ({
+          distanceKm: Math.round((leg.distanceMeters / 1000) * 100) / 100,
+          durationMinutes: Math.round(parseInt(leg.duration.replace('s', '')) / 60),
+        })),
+        source: 'google',
+      };
+
+      routeCache.set(cacheKey, result);
+      console.log('[Optimize] Routes API v2 optimized:', result.optimizedOrder);
+      return result;
+    }
+
+    console.warn('[Optimize] No routes returned, using Haversine fallback');
+    return haversineOptimize(origin, destination, waypoints);
+  } catch (error) {
+    console.error('[Optimize] Routes API v2 error:', error);
+    return haversineOptimize(origin, destination, waypoints);
+  }
+}
+
+// Haversine nearest-neighbor optimization (ฟรี ไม่เรียก API)
+function haversineOptimize(origin: LatLng, destination: LatLng, waypoints: LatLng[]): OptimizeResult {
+  if (waypoints.length === 0) {
+    const km = haversineDistance(origin, destination);
+    return {
+      optimizedOrder: [],
+      totalDistanceKm: Math.round(km * 100) / 100,
+      totalDurationMinutes: Math.round((km / 25) * 60),
+      legs: [{ distanceKm: Math.round(km * 100) / 100, durationMinutes: Math.round((km / 25) * 60) }],
+      source: 'haversine',
+    };
+  }
+
+  // Nearest-neighbor greedy algorithm
+  const remaining = waypoints.map((wp, i) => ({ ...wp, originalIndex: i }));
+  const order: number[] = [];
+  const legs: { distanceKm: number; durationMinutes: number }[] = [];
+  let current = origin;
+  let totalKm = 0;
+
+  while (remaining.length > 0) {
+    let nearestIdx = 0;
+    let nearestDist = Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const d = haversineDistance(current, remaining[i]);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearestIdx = i;
+      }
+    }
+    const nearest = remaining.splice(nearestIdx, 1)[0];
+    order.push(nearest.originalIndex);
+    legs.push({
+      distanceKm: Math.round(nearestDist * 100) / 100,
+      durationMinutes: Math.round((nearestDist / 25) * 60),
+    });
+    totalKm += nearestDist;
+    current = nearest;
+  }
+
+  // Last leg: last waypoint → destination
+  const lastLegKm = haversineDistance(current, destination);
+  legs.push({
+    distanceKm: Math.round(lastLegKm * 100) / 100,
+    durationMinutes: Math.round((lastLegKm / 25) * 60),
+  });
+  totalKm += lastLegKm;
+
+  return {
+    optimizedOrder: order,
+    totalDistanceKm: Math.round(totalKm * 100) / 100,
+    totalDurationMinutes: Math.round((totalKm / 25) * 60),
+    legs,
+    source: 'haversine',
+  };
+}
+
+// ============================================================
+// ฟอร์แมต helpers
+// ============================================================
 export function formatDistance(km: number): string {
   if (km < 1) return `${Math.round(km * 1000)} ม.`;
   return `${km.toFixed(1)} กม.`;
 }
 
-// ฟอร์แมตเวลา
 export function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} นาที`;
   const h = Math.floor(minutes / 60);

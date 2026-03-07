@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
 import PhoneInput from '@/components/ui/PhoneInput';
+import MapPicker from '@/components/ui/MapPicker';
 
 export default function CreateTaskPage() {
   const router = useRouter();
@@ -414,6 +415,13 @@ export default function CreateTaskPage() {
                 </p>
               )}
             </div>
+
+            {/* ★ Map Picker */}
+            <MapPicker
+              latitude={form.latitude}
+              longitude={form.longitude}
+              onSelect={(lat, lng) => setForm(prev => ({ ...prev, latitude: lat, longitude: lng }))}
+            />
           </div>
         </div>
 

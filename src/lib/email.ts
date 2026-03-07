@@ -129,7 +129,12 @@ export function emailIssueAlert(taskNumber: string, issueType: string, messenger
   };
 }
 
-export function emailTaskCompleted(taskNumber: string, recipientName: string, requesterName: string) {
+// ★ อัปเดต: เพิ่ม parameter podUrl สำหรับแนบลิงก์รูป POD
+export function emailTaskCompleted(taskNumber: string, recipientName: string, requesterName: string, podUrl?: string) {
+  const podSection = podUrl ? `
+    <tr><td style="padding:6px 0;color:#6b7280;">หลักฐาน:</td><td><a href="${podUrl}" style="color:#16a34a;text-decoration:underline;">📸 ดูรูปหลักฐานการส่ง</a></td></tr>
+  ` : '';
+
   return {
     subject: `✅ ส่งสำเร็จ ${taskNumber} — ${recipientName}`,
     html: `
@@ -142,8 +147,36 @@ export function emailTaskCompleted(taskNumber: string, recipientName: string, re
           <table style="width:100%;font-size:14px;">
             <tr><td style="padding:6px 0;color:#6b7280;">ผู้รับ:</td><td style="font-weight:600;">${recipientName}</td></tr>
             <tr><td style="padding:6px 0;color:#6b7280;">เวลา:</td><td>${new Date().toLocaleString('th-TH')}</td></tr>
+            ${podSection}
           </table>
           <p style="margin:16px 0 0;font-size:13px;color:#9ca3af;">คุณ ${requesterName} — เอกสารถึงผู้รับแล้วเรียบร้อย</p>
+        </div>
+      </div>
+    `,
+  };
+}
+
+// ★ ใหม่: แจ้งเมื่อคืนเอกสาร (Round-trip returned)
+export function emailDocumentReturned(taskNumber: string, recipientName: string, requesterName: string, podUrl?: string) {
+  const podSection = podUrl ? `
+    <tr><td style="padding:6px 0;color:#6b7280;">หลักฐาน:</td><td><a href="${podUrl}" style="color:#0891b2;text-decoration:underline;">📸 ดูรูปเอกสารที่คืน</a></td></tr>
+  ` : '';
+
+  return {
+    subject: `📦 คืนเอกสารสำเร็จ ${taskNumber} — ${recipientName}`,
+    html: `
+      <div style="font-family:'Segoe UI',sans-serif;max-width:500px;margin:0 auto;padding:20px;">
+        <div style="background:linear-gradient(135deg,#06b6d4,#0891b2);padding:20px;border-radius:16px 16px 0 0;color:white;">
+          <h2 style="margin:0;">📦 คืนเอกสาร/เช็คเรียบร้อย</h2>
+          <p style="margin:5px 0 0;opacity:0.9;">${taskNumber}</p>
+        </div>
+        <div style="background:#ecfeff;padding:20px;border:1px solid #a5f3fc;border-top:0;border-radius:0 0 16px 16px;">
+          <table style="width:100%;font-size:14px;">
+            <tr><td style="padding:6px 0;color:#6b7280;">ผู้รับเดิม:</td><td style="font-weight:600;">${recipientName}</td></tr>
+            <tr><td style="padding:6px 0;color:#6b7280;">เวลาคืน:</td><td>${new Date().toLocaleString('th-TH')}</td></tr>
+            ${podSection}
+          </table>
+          <p style="margin:16px 0 0;font-size:13px;color:#9ca3af;">คุณ ${requesterName} — แมสนำเอกสาร/เช็คมาวางคืนที่ออฟฟิศแล้ว</p>
         </div>
       </div>
     `,

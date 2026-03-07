@@ -135,12 +135,17 @@ export default function TaskDetailPage() {
   const handleAction = async (action: 'return' | 'reschedule') => {
     setActionLoading(action);
     try {
-      const newStatus = action === 'return' ? 'returning' : 'assigned';
+      const newStatus = action === 'return' ? 'returning' : 'new';
       const notes = action === 'return' ? 'พนักงานสั่งให้นำเอกสารคืน' : 'พนักงานสั่งเลื่อนส่งใหม่';
+      const body: Record<string, unknown> = { status: newStatus, notes };
+      // เลื่อนวันส่ง → ปลดแมสเซ็นเจอร์ออก ให้หัวหน้าจ่ายงานใหม่
+      if (action === 'reschedule') {
+        body.assignedTo = null;
+      }
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, notes }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {

@@ -87,7 +87,9 @@ export async function GET(request: NextRequest) {
 
     const tasks = await query<(Task & { RequesterName: string; MessengerName: string | null })[]>(
       `SELECT t.*, 
-              u1.FullName AS RequesterName, 
+              u1.FullName AS RequesterName,
+              u1.Phone AS RequesterPhone,
+              u1.Department AS RequesterDept,
               u2.FullName AS MessengerName
        FROM Tasks t
        LEFT JOIN Users u1 ON t.RequesterId = u1.Id

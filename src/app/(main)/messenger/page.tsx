@@ -37,6 +37,9 @@ interface AssignedTask {
   Longitude: number | null;
   Status: TaskStatus;
   Priority: string;
+  RequesterName?: string;
+  RequesterPhone?: string | null;
+  RequesterDept?: string | null;
 }
 
 interface ActiveTrip {
@@ -545,13 +548,25 @@ export default function MessengerPage() {
                           </a>
                         )}
                       </div>
+                      {/* ★ ผู้สร้างใบงาน */}
+                      {task.RequesterName && (
+                        <div className="flex items-center gap-4 pt-1 border-t border-dashed border-surface-200 dark:border-surface-700 mt-1">
+                          <span>📝 ผู้ขอ: {task.RequesterName}{task.RequesterDept ? ` (${task.RequesterDept})` : ''}</span>
+                          {task.RequesterPhone && (
+                            <a href={`tel:${task.RequesterPhone}`}
+                              className="flex items-center gap-1 text-orange-600 dark:text-orange-400 font-medium">
+                              <Phone size={12} /> โทร
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">
                       {/* Navigate */}
                       {task.Latitude && task.Longitude && (
-                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=two_wheeler`}
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=driving`}
                           target="_blank" rel="noopener noreferrer"
                           className="flex-1 py-2.5 rounded-xl text-xs font-medium text-center
                                      border border-surface-200 dark:border-surface-700

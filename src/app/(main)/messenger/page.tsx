@@ -560,6 +560,14 @@ export default function MessengerPage() {
                       </div>
                     </div>
 
+                    {/* ★ Alert: สถานะ returning (ต้องนำเอกสารคืน) */}
+                    {task.Status === 'returning' && (
+                      <div className="mx-2 mb-2 p-2.5 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-center">
+                        <p className="text-xs font-bold text-orange-700 dark:text-orange-300">📦 กรุณานำเอกสารกลับมาคืนที่ออฟฟิศ</p>
+                        <p className="text-[10px] text-orange-500 mt-0.5">เมื่อคืนแล้ว กดปุ่ม &quot;คืนเอกสาร + ถ่ายรูป&quot; ด้านล่าง</p>
+                      </div>
+                    )}
+
                     {/* Details */}
                     <p className="text-sm text-surface-700 dark:text-surface-300 mb-2 ml-8">📄 {task.DocumentDesc}</p>
                     <div className="space-y-1.5 text-xs text-surface-500 dark:text-surface-400 ml-8">

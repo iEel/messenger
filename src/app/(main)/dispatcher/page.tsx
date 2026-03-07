@@ -39,6 +39,8 @@ interface TaskItem {
   ScheduledDate: string | null;
   CreatedAt: string;
   RequesterName: string;
+  RequesterPhone: string | null;
+  RequesterDept: string | null;
   MessengerName: string | null;
   AssignedTo: number | null;
   Latitude: number | null;
@@ -264,7 +266,7 @@ export default function DispatcherPage() {
             </div>
             <div className="flex items-center gap-1">
               {task.Latitude && task.Longitude && (
-                <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=two_wheeler`}
+                <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=driving`}
                   target="_blank" rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                   className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-surface-400 hover:text-blue-500 transition-colors"
@@ -296,6 +298,15 @@ export default function DispatcherPage() {
                 <Route size={13} /> {calcDistance(officeCoords.lat, officeCoords.lng, task.Latitude, task.Longitude).toFixed(1)} km
               </p>
             )}
+            {/* ★ ผู้สร้างใบงาน */}
+            <p className="flex items-center gap-1.5">
+              📝 {task.RequesterName}{task.RequesterDept ? ` (${task.RequesterDept})` : ''}
+              {task.RequesterPhone && (
+                <a href={`tel:${task.RequesterPhone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="ml-1 text-orange-600 dark:text-orange-400 font-medium hover:underline">📞 {task.RequesterPhone}</a>
+              )}
+            </p>
           </div>
 
           <div className="mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">

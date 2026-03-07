@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import {
   Play,
   Square,
@@ -42,11 +43,17 @@ interface ActiveTrip {
 }
 
 export default function MessengerPage() {
+  const { data: session } = useSession();
   const [tasks, setTasks] = useState<AssignedTask[]>([]);
   const [activeTrip, setActiveTrip] = useState<ActiveTrip | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [tripLoading, setTripLoading] = useState(false);
   const [elapsed, setElapsed] = useState('00:00:00');
+
+  // Dispatcher ต้อง filter เฉพาะงานที่ assign ให้ตัวเอง
+  const userId = session?.user?.id;
+  const userRole = session?.user?.role;
+  const assignedToParam = (userRole === 'dispatcher' && userId) ? `&assignedTo=${userId}` : '';
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -59,7 +66,7 @@ export default function MessengerPage() {
       const tripsData = await tripsRes.json();
 
       // รวมงาน assigned, picked_up, in_transit + roundtrip statuses
-      const allTasksRes = await fetch('/api/tasks?limit=50');
+      const allTasksRes = await fetch(`/api/tasks?limit=50${assignedToParam}`);
       const allData = await allTasksRes.json();
       const myTasks = (allData.tasks || []).filter((t: AssignedTask) =>
         ['assigned', 'picked_up', 'in_transit', 'return_picked_up', 'returning'].includes(t.Status)
@@ -71,12 +78,12 @@ export default function MessengerPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [assignedToParam]);
 
   // Silent fetch สำหรับ polling (ไม่แสดง loading spinner)
   const fetchDataSilent = useCallback(async () => {
     try {
-      const allTasksRes = await fetch('/api/tasks?limit=50');
+      const allTasksRes = await fetch(`/api/tasks?limit=50${assignedToParam}`);
       const allData = await allTasksRes.json();
       const myTasks = (allData.tasks || []).filter((t: AssignedTask) =>
         ['assigned', 'picked_up', 'in_transit', 'return_picked_up', 'returning'].includes(t.Status)
@@ -90,7 +97,7 @@ export default function MessengerPage() {
     } catch (error) {
       console.error('Silent fetch error:', error);
     }
-  }, []);
+  }, [assignedToParam]);
 
   useEffect(() => {
     fetchData();

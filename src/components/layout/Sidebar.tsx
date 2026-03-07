@@ -65,10 +65,7 @@ export default function Sidebar() {
       {/* Header */}
       <div className="p-4 border-b border-surface-200 dark:border-surface-700">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 
-                          flex items-center justify-center shadow-lg shrink-0">
-            <FileText size={20} className="text-white" />
-          </div>
+          <img src="/favicon.png" alt="Messenger" className="w-10 h-10 rounded-xl shadow-lg shrink-0" />
           {!collapsed && (
             <div className="animate-fade-in overflow-hidden">
               <h1 className="text-sm font-bold text-surface-800 dark:text-white whitespace-nowrap">Messenger</h1>
@@ -167,10 +164,7 @@ export default function Sidebar() {
           <Menu size={22} className="text-surface-600 dark:text-surface-300" />
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 
-                          flex items-center justify-center">
-            <FileText size={16} className="text-white" />
-          </div>
+          <img src="/favicon.png" alt="Messenger" className="w-8 h-8 rounded-lg" />
           <span className="font-semibold text-surface-800 dark:text-white text-sm">Messenger Tracking</span>
         </div>
       </div>

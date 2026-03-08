@@ -485,6 +485,18 @@ cancelled                         issue → return / reschedule
 - ★ **Navigation Mode Fix** — แก้ปุ่ม "นำทาง" Google Maps จาก `driving` (รถยนต์) → `two_wheeler` (มอเตอร์ไซค์)
   - Routes API v2 + Route Optimization ใช้ `TWO_WHEELER` ถูกต้องตั้งแต่แรก
   - แก้เฉพาะ Google Maps URL ที่หน้าแมสเซ็นเจอร์ + หน้าจ่ายงาน
+- ★ **Return Leg Navigation** — ปุ่มนำทางขากลับ (status `returning`/`return_picked_up`) เปลี่ยนเป็นนำทางกลับ Office แทน
+  - แสดงปุ่ม "🏢 นำทางกลับ" สีส้ม แทน "นำทาง" ปกติ
+- ★ **POD Leg Separation** — แยกหลักฐานการส่ง (รูป/ลายเซ็น) ตามขาไป/ขากลับ
+  - เพิ่มคอลัมน์ `Leg` ในตาราง `ProofOfDelivery` (delivery/return)
+  - Upload API ตรวจ status อัตโนมัติ → บันทึก leg ที่ถูกต้อง
+  - หน้ารายละเอียดงานแสดงแยก "📤 ขาส่ง (ไป)" / "📥 ขากลับ (คืน)"
+- ★ **Quick Assign** — หน้าจ่ายงาน: dropdown เลือกแมสเซ็นเจอร์บน card ทันที (1 คลิก ไม่ต้องเปิด modal)
+- ★ **Bulk Assign** — เลือกหลายใบงาน (checkbox) + จ่ายพร้อมกัน
+  - ปุ่ม "เลือกทั้งหมด" ที่ header + Floating Bar แสดงจำนวนที่เลือก
+  - modal ส่ง `Promise.all` จ่ายทุกใบพร้อมกัน
+- ★ **Reassign Messenger** — เปลี่ยนแมสเซ็นเจอร์ (เฉพาะสถานะ `assigned`) ด้วย dropdown "🔄 เปลี่ยน"
+- ★ **Unassign (ดึงงานกลับ)** — ดึงใบงานกลับจาก `assigned` → `new` + ปลด AssignedTo
 
 ---
 

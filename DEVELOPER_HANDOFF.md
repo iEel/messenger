@@ -482,6 +482,9 @@ cancelled                         issue → return / reschedule
 - ★ **Return Document Flow** — "นำเอกสารมาคืน" ทำงานเหมือนกันทั้งในระบบ + email (status → `returning`)
   - แมสเซ็นเจอร์เห็น alert "📦 กรุณานำเอกสารกลับมาคืนที่ออฟฟิศ" + ปุ่ม "คืนเอกสาร + ถ่ายรูป"
   - กด confirm → status = `returned` + ถ่ายรูป POD → จบงาน
+- ★ **Navigation Mode Fix** — แก้ปุ่ม "นำทาง" Google Maps จาก `driving` (รถยนต์) → `two_wheeler` (มอเตอร์ไซค์)
+  - Routes API v2 + Route Optimization ใช้ `TWO_WHEELER` ถูกต้องตั้งแต่แรก
+  - แก้เฉพาะ Google Maps URL ที่หน้าแมสเซ็นเจอร์ + หน้าจ่ายงาน
 
 ---
 

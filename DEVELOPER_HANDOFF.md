@@ -15,7 +15,7 @@ Web Application สำหรับจัดการการส่ง/รับ
 | **Requester** | พนักงานทั่วไป สร้างใบงานส่งเอกสาร | `/tasks`, `/tasks/new` |
 | **Dispatcher** | หัวหน้าแมส จ่ายงาน+ติดตาม | `/dispatcher`, `/dispatcher/analytics` |
 | **Messenger** | แมสเซ็นเจอร์ รับงาน+วิ่งส่ง | `/messenger`, `/messenger/deliver/[id]` |
-| **Admin** | ดูแลระบบ จัดการ User + ตั้งค่า | `/admin/users`, `/admin/settings` |
+| **Admin** | ดูแลระบบ จัดการ User + ตั้งค่า | `/admin/users`, `/admin/settings`, `/admin/rate-limit` |
 
 ---
 
@@ -537,6 +537,27 @@ cancelled                         issue → return / reschedule
   - ปิดอัตโนมัติเมื่อคลิกที่อื่น (click-outside listener)
   - Smart direction: แถวครึ่งบนเปิดลง ↓ / แถวครึ่งล่างเปิดขึ้น ↑
 - ★ **Dashboard Role Filter** — requester เห็นเฉพาะงานที่ตัวเองเปิด
+- ★ **Centralized Auth Middleware** — `src/middleware.ts`
+  - ตรวจสอบ session cookie (`authjs.session-token`) ก่อนเข้าทุก route
+  - Public paths: `/login`, `/api/auth`, `/api/email-action` (HMAC token)
+  - API routes → 401 JSON, Page routes → redirect ไป `/login`
+  - ป้องกัน 2 ชั้น: Middleware (cookie) + API route (`await auth()` + role check)
+- ★ **API Auth Coverage Fix** — เพิ่ม auth protection ให้ทุก API route
+  - `test-email` → admin only
+  - `messengers`, `push/subscribe`, `maps-resolve` → require login
+  - `email-action` → ใช้ HMAC token (ปลอดภัยอยู่แล้ว)
+- ★ **Rate Limiting** — ป้องกัน brute force / request abuse
+  - `src/lib/rate-limit.ts` — In-memory sliding window + DB persistence
+  - General: 60 req/นาที (default), Login: 5 ครั้ง/นาที (default)
+  - เกิน limit → บล็อก IP (General 5 นาที, Login 15 นาที)
+  - IP detection: `cf-connecting-ip` / `x-forwarded-for` / `x-real-ip`
+  - Config บันทึกลง `SystemSettings` table (คงอยู่แม้ restart)
+  - `src/app/api/rate-limit/route.ts` — GET stats, PUT config, DELETE unblock
+  - `src/app/(main)/admin/rate-limit/page.tsx` — Admin UI:
+    - Dashboard: Active IPs, Blocked count, usage bars
+    - Blocked IPs: รายชื่อ + ปุ่มปลดบล็อก
+    - ตั้งค่า: แก้ maxRequests, window, blockDuration (General + Login)
+    - Auto-refresh ทุก 10 วินาที
 
 ---
 
@@ -547,7 +568,7 @@ cancelled                         issue → return / reschedule
 | 1 | `nodemailer` peer dependency conflict | ต้องใช้ `--legacy-peer-deps` ตอน install | อัปเกรด `next-auth` เป็น stable version |
 | 2 | NEXTAUTH_SECRET ใช้ค่า default | ไม่ปลอดภัยสำหรับ production | เปลี่ยนเป็น random 32+ chars |
 | 3 | DB password ใน `.env.local` เป็น plaintext | ไม่ควรอยู่ใน repo | ใช้ Secret Manager / Vault |
-| 4 | ไม่มี rate limiting | API อาจถูก abuse | ใช้ `next-rate-limit` middleware |
+| ~~4~~ | ~~ไม่มี rate limiting~~ | ~~API อาจถูก abuse~~ | ✅ **แก้แล้ว** — In-memory sliding window + middleware + Admin UI |
 | 5 | ไม่มี input validation (Zod/Yup) | SQL Injection risk น้อย (parameterized) แต่ data อาจไม่ถูกต้อง | เพิ่ม Zod validation |
 | ~~6~~ | ~~POD ส่ง base64 แต่ไม่ได้ save~~ | ~~ข้อมูลจะหาย~~ | ✅ **แก้แล้ว** — Phase 6 File Upload POD |
 | ~~7~~ | ~~วันเวลาแสดงผิด (ปี พ.ศ. + timezone ซ้อน)~~ | ~~แสดง 7/3/69 16:53 แทน 7/3/2026 09:53~~ | ✅ **แก้แล้ว** — `lib/date-utils.ts` |

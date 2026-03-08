@@ -2,12 +2,23 @@
 import webPush from 'web-push';
 import { query, getPool } from '@/lib/db';
 
-// Configure VAPID
-webPush.setVapidDetails(
-  'mailto:veerapon.l@sonic.co.th',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+// ★ Lazy VAPID init — ป้องกัน crash ตอน build
+let vapidInitialized = false;
+function ensureVapid() {
+  if (vapidInitialized) return;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) {
+    console.warn('[Push] VAPID keys not configured, push notifications disabled');
+    return;
+  }
+  try {
+    webPush.setVapidDetails('mailto:admin@company.com', publicKey, privateKey);
+    vapidInitialized = true;
+  } catch (err) {
+    console.error('[Push] VAPID init error:', err);
+  }
+}
 
 interface PushPayload {
   title: string;
@@ -28,6 +39,8 @@ interface PushSubscription {
  */
 export async function sendPushToUser(userId: number, payload: PushPayload) {
   try {
+    ensureVapid();
+    if (!vapidInitialized) return; // VAPID not configured, skip
     const subscriptions = await query<PushSubscription[]>(
       'SELECT Id, Endpoint, P256dh, Auth FROM PushSubscriptions WHERE UserId = @userId',
       { userId }

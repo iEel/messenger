@@ -525,6 +525,18 @@ cancelled                         issue → return / reschedule
   - `src/app/(main)/admin/audit/page.tsx` — หน้า Audit Trail (ค้นหา, กรอง, วันที่)
   - บันทึกครบ: Login, สร้าง/จ่าย/ยกเลิกใบงาน, เปลี่ยนสถานะ, สร้าง/แก้ไข/ปิดผู้ใช้, แก้ตั้งค่า, เริ่ม/จบรอบวิ่ง
   - แก้ timezone ด้วย `parseLocalDate()` — strip `Z` suffix จาก MSSQL
+- ★ **LDAP/AD Hybrid Authentication** — Login ได้ทั้ง Local User และ Active Directory
+  - `src/lib/ldap.ts` — LDAP authenticate (UPN), test connection, parse DN (แผนก/สาขาจาก OU)
+  - `src/lib/auth.ts` — Hybrid login: Local → LDAP fallback + auto-create user (role = requester)
+  - `src/app/api/ldap/test/route.ts` — API ทดสอบการเชื่อมต่อ LDAP
+  - Settings UI: toggle เปิด/ปิด, Server URL, Domain, Base DN, ปุ่มทดสอบ
+  - AD Attributes: `cn`, `employeeID`, `mail`, `company`, `distinguishedName` (parse OU)
+  - เพิ่ม column `AdUsername` เก็บ UPN prefix สำหรับ login, `EmployeeId` เก็บรหัสจาก AD
+  - `.env.local`: `LDAP_BIND_DN`, `LDAP_BIND_PASSWORD` (Service Account)
+- ★ **User Management UI Fix** — dropdown เมนูจุด 3 จุด
+  - ปิดอัตโนมัติเมื่อคลิกที่อื่น (click-outside listener)
+  - Smart direction: แถวครึ่งบนเปิดลง ↓ / แถวครึ่งล่างเปิดขึ้น ↑
+- ★ **Dashboard Role Filter** — requester เห็นเฉพาะงานที่ตัวเองเปิด
 
 ---
 

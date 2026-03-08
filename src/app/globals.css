@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@custom-variant dark (&.dark);
+@custom-variant dark (.dark &);
 
 @theme {
   /* สีหลัก - Premium Indigo/Blue */

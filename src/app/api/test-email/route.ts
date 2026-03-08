@@ -5,6 +5,10 @@ import { sendMail } from '@/lib/email';
 // POST — ส่ง test email เพื่อตรวจสอบว่า email ทำงานหรือไม่  
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { to } = await request.json();
     const targetEmail = to || 'veerapon.l@sonic.co.th';

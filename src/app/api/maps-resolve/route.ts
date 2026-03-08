@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 
 // GET - Resolve Google Maps short URL → ดึง lat/lng จาก redirect
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const url = request.nextUrl.searchParams.get('url');
 
   if (!url) {

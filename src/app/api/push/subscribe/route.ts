@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { auth } from '@/lib/auth';
 
 // ★ Save / update push subscription for a user
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { userId, subscription } = await req.json();
     if (!userId || !subscription) {
       return NextResponse.json({ error: 'userId and subscription required' }, { status: 400 });
@@ -47,6 +52,10 @@ export async function POST(req: NextRequest) {
 // ★ Delete push subscription
 export async function DELETE(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const { userId, endpoint } = await req.json();
     if (!userId) {
       return NextResponse.json({ error: 'userId required' }, { status: 400 });

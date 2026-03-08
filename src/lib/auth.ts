@@ -105,10 +105,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null; // ทั้ง local + LDAP ไม่ผ่าน
         }
 
-        // ★ STEP 2: ไม่เจอใน DB → ลอง LDAP (auto-create user ใหม่)
+        // ★ STEP 2: ไม่เจอใน DB (by username) → ลอง LDAP
         const ldapUser = await ldapAuthenticate(username, password);
         if (ldapUser) {
-          // สร้าง user ใหม่ใน DB (role = requester / พนักงาน)
+          // เช็คว่า EmployeeId จาก AD มีอยู่ใน DB แล้วหรือไม่
+          const existingByEmpId = await query<User[]>(
+            'SELECT * FROM Users WHERE EmployeeId = @empId AND IsActive = 1',
+            { empId: ldapUser.employeeID }
+          );
+
+          if (existingByEmpId.length > 0) {
+            // ★ มี user อยู่แล้ว (อาจเคย auto-create มาก่อน) → อัปเดตข้อมูล + login
+            const existing = existingByEmpId[0];
+            await query(
+              `UPDATE Users SET 
+                FullName = @fullName, Email = @email, Department = @department,
+                LastLoginAt = GETDATE(), UpdatedAt = GETDATE()
+               WHERE Id = @id`,
+              { id: existing.Id, fullName: ldapUser.cn, email: ldapUser.mail, department: ldapUser.department }
+            );
+            logAudit({ action: 'user_login', userId: existing.Id, details: `${ldapUser.cn} (AD) เข้าสู่ระบบ` });
+
+            return {
+              id: String(existing.Id),
+              employeeId: existing.EmployeeId,
+              fullName: ldapUser.cn,
+              email: ldapUser.mail || existing.Email || '',
+              role: existing.Role,
+              department: ldapUser.department || existing.Department,
+            };
+          }
+
+          // ★ ไม่มีเลย → สร้าง user ใหม่ (role = requester / พนักงาน)
           const result = await query<{ Id: number }[]>(
             `INSERT INTO Users (EmployeeId, FullName, Email, Phone, PasswordHash, Role, Department, IsActive)
              OUTPUT INSERTED.Id

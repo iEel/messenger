@@ -512,6 +512,10 @@ cancelled                         issue → return / reschedule
 - ★ **Pull-to-Refresh** — ดึงลงเพื่อรีเฟรชข้อมูล (มือถือ)
   - `src/components/pull-to-refresh.tsx` — Reusable component พร้อม rubber-band effect
   - ใช้ในหน้าแมสเซ็นเจอร์ + หน้าจ่ายงาน
+- ★ **Date Range Filter (รายงานรายเดือน)** — เลือกช่วงเวลาดูรายงาน
+  - Preset: วันนี้ / สัปดาห์นี้ / เดือนนี้ / กำหนดเอง (date picker)
+  - API `/api/analytics` รองรับ `?from=YYYY-MM-DD&to=YYYY-MM-DD`
+  - สถิติ, กราฟ, workload, แมสดีเด่น, สรุปรอบวิ่ง + CSV export ตามช่วงเวลาที่เลือก
 
 ---
 

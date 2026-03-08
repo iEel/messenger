@@ -10,6 +10,11 @@ import {
   Building,
   Globe,
   Hash,
+  Link as LinkIcon,
+  AtSign,
+  Users,
+  AlertTriangle,
+  Lock,
 } from 'lucide-react';
 import { formatDateTimeShort } from '@/lib/date-utils';
 
@@ -56,6 +61,14 @@ export default function AdminSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // ★ LDAP
+  const [ldapEnabled, setLdapEnabled] = useState(false);
+  const [ldapUrl, setLdapUrl] = useState('');
+  const [ldapDomain, setLdapDomain] = useState('');
+  const [ldapBaseDn, setLdapBaseDn] = useState('');
+  const [ldapTesting, setLdapTesting] = useState(false);
+  const [ldapTestResult, setLdapTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
   useEffect(() => {
     fetchSettings();
   }, []);
@@ -69,6 +82,12 @@ export default function AdminSettingsPage() {
         const values: Record<string, string> = {};
         data.forEach(s => { values[s.SettingKey] = s.SettingValue; });
         setFormValues(values);
+
+        // LDAP values
+        setLdapEnabled(values['ldap_enabled'] === 'true');
+        setLdapUrl(values['ldap_url'] || '');
+        setLdapDomain(values['ldap_domain'] || '');
+        setLdapBaseDn(values['ldap_base_dn'] || '');
       }
     } catch (error) {
       console.error('Fetch settings error:', error);
@@ -81,11 +100,18 @@ export default function AdminSettingsPage() {
     setIsSaving(true);
     setSaved(false);
     try {
-      const settingsToSave = Object.entries(formValues).map(([key, value]) => ({ key, value }));
+      // Combine general settings + LDAP settings
+      const allSettings = [
+        ...Object.entries(formValues).map(([key, value]) => ({ key, value })),
+        { key: 'ldap_enabled', value: ldapEnabled ? 'true' : 'false' },
+        { key: 'ldap_url', value: ldapUrl },
+        { key: 'ldap_domain', value: ldapDomain },
+        { key: 'ldap_base_dn', value: ldapBaseDn },
+      ];
       const res = await fetch('/api/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings: settingsToSave }),
+        body: JSON.stringify({ settings: allSettings }),
       });
       if (res.ok) {
         setSaved(true);
@@ -96,6 +122,34 @@ export default function AdminSettingsPage() {
       console.error('Save settings error:', error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleLdapTest = async () => {
+    setLdapTesting(true);
+    setLdapTestResult(null);
+    try {
+      // Save LDAP settings first
+      await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: [
+            { key: 'ldap_enabled', value: ldapEnabled ? 'true' : 'false' },
+            { key: 'ldap_url', value: ldapUrl },
+            { key: 'ldap_domain', value: ldapDomain },
+            { key: 'ldap_base_dn', value: ldapBaseDn },
+          ],
+        }),
+      });
+
+      const res = await fetch('/api/ldap/test', { method: 'POST' });
+      const data = await res.json();
+      setLdapTestResult(data);
+    } catch (error) {
+      setLdapTestResult({ success: false, message: 'เกิดข้อผิดพลาดในการทดสอบ' });
+    } finally {
+      setLdapTesting(false);
     }
   };
 
@@ -219,6 +273,141 @@ export default function AdminSettingsPage() {
           </div>
         </div>
       ))}
+
+      {/* ★ LDAP / Active Directory Section */}
+      <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
+                       shadow-[var(--shadow-card)] overflow-hidden">
+        {/* Header with Toggle */}
+        <div className="p-5 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-sm">
+                <LinkIcon size={20} />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-surface-800 dark:text-white">Active Directory (LDAP)</h2>
+                <p className="text-xs text-surface-500 dark:text-surface-400">ให้พนักงาน login ด้วยรหัส AD</p>
+              </div>
+            </div>
+
+            {/* Toggle Switch */}
+            <button
+              onClick={() => setLdapEnabled(!ldapEnabled)}
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent
+                          transition-colors duration-200 ease-in-out
+                          ${ldapEnabled ? 'bg-primary-500' : 'bg-surface-300 dark:bg-surface-600'}`}
+            >
+              <span className={`inline-block h-5.5 w-5.5 transform rounded-full bg-white shadow-lg ring-0
+                                transition duration-200 ease-in-out mt-[1px]
+                                ${ldapEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
+                style={{ width: '22px', height: '22px' }}
+              />
+              {ldapEnabled && (
+                <CheckCircle size={12} className="absolute right-8 top-1/2 -translate-y-1/2 text-white" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* LDAP Fields */}
+        <div className="p-5 space-y-4">
+          {/* Server URL */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+              <Globe size={16} className="text-surface-400" />
+              Server URL
+            </label>
+            <input
+              type="text"
+              value={ldapUrl}
+              onChange={e => setLdapUrl(e.target.value)}
+              placeholder="ldap://10.10.100.2:389"
+              disabled={!ldapEnabled}
+              className="w-full px-4 py-3 rounded-xl border border-surface-200 dark:border-surface-700
+                         bg-white dark:bg-surface-900 text-surface-800 dark:text-white text-sm
+                         placeholder:text-surface-400
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                         transition-all"
+            />
+          </div>
+
+          {/* Domain */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+              <AtSign size={16} className="text-surface-400" />
+              Domain
+            </label>
+            <input
+              type="text"
+              value={ldapDomain}
+              onChange={e => setLdapDomain(e.target.value)}
+              placeholder="soniclocal.com"
+              disabled={!ldapEnabled}
+              className="w-full px-4 py-3 rounded-xl border border-surface-200 dark:border-surface-700
+                         bg-white dark:bg-surface-900 text-surface-800 dark:text-white text-sm
+                         placeholder:text-surface-400
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                         transition-all"
+            />
+          </div>
+
+          {/* Base DN */}
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+              <Users size={16} className="text-surface-400" />
+              Base DN
+            </label>
+            <input
+              type="text"
+              value={ldapBaseDn}
+              onChange={e => setLdapBaseDn(e.target.value)}
+              placeholder="DC=soniclocal,DC=com"
+              disabled={!ldapEnabled}
+              className="w-full px-4 py-3 rounded-xl border border-surface-200 dark:border-surface-700
+                         bg-white dark:bg-surface-900 text-surface-800 dark:text-white text-sm
+                         placeholder:text-surface-400
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                         transition-all"
+            />
+          </div>
+
+          {/* Test Connection Button */}
+          <button
+            onClick={handleLdapTest}
+            disabled={!ldapEnabled || !ldapUrl || ldapTesting}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white
+                       bg-gradient-to-r from-purple-500 to-indigo-600
+                       hover:from-purple-600 hover:to-indigo-700
+                       disabled:opacity-40 disabled:cursor-not-allowed
+                       shadow-md hover:shadow-lg
+                       transition-all cursor-pointer"
+          >
+            {ldapTesting ? <Loader2 size={16} className="animate-spin" /> : <LinkIcon size={16} />}
+            {ldapTesting ? 'กำลังทดสอบ...' : '🔗 ทดสอบการเชื่อมต่อ'}
+          </button>
+
+          {/* Test Result */}
+          {ldapTestResult && (
+            <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium animate-fade-in
+                             ${ldapTestResult.success
+                               ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+                               : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'}`}>
+              {ldapTestResult.success ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+              {ldapTestResult.message}
+            </div>
+          )}
+
+          {/* Service Account Note */}
+          <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/10
+                          border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs">
+            <Lock size={14} className="shrink-0 mt-0.5" />
+            <span>Service Account (<code className="font-mono bg-amber-100 dark:bg-amber-900/30 px-1 rounded">LDAP_BIND_DN</code>, <code className="font-mono bg-amber-100 dark:bg-amber-900/30 px-1 rounded">LDAP_BIND_PASSWORD</code>) ตั้งค่าใน .env</span>
+          </div>
+        </div>
+      </div>
 
       {/* All Settings Table */}
       <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700

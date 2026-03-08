@@ -519,6 +519,12 @@ cancelled                         issue → return / reschedule
 - ★ **Dark Mode Fix** — แก้ปุ่ม Dark Mode ที่กดแล้วไม่ทำงาน
   - Tailwind v4 ต้องเพิ่ม `@custom-variant dark (.dark &)` ใน `globals.css`
   - `ThemeProvider` toggle `.dark` class บน `<html>` — ทำงานถูกต้องแล้ว
+- ★ **Audit Trail** — ประวัติกิจกรรมทั้งหมดในระบบ (เฉพาะ admin)
+  - `src/lib/audit.ts` — `logAudit()` helper, auto-create table `AuditLog`
+  - `src/app/api/audit/route.ts` — GET พร้อม filter/search/pagination
+  - `src/app/(main)/admin/audit/page.tsx` — หน้า Audit Trail (ค้นหา, กรอง, วันที่)
+  - บันทึกครบ: Login, สร้าง/จ่าย/ยกเลิกใบงาน, เปลี่ยนสถานะ, สร้าง/แก้ไข/ปิดผู้ใช้, แก้ตั้งค่า, เริ่ม/จบรอบวิ่ง
+  - แก้ timezone ด้วย `parseLocalDate()` — strip `Z` suffix จาก MSSQL
 
 ---
 

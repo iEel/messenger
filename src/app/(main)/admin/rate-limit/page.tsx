@@ -493,7 +493,7 @@ export default function RateLimitPage() {
           {/* Save Button */}
           <div className="mt-6 flex items-center justify-between pt-4 border-t border-surface-200 dark:border-surface-700">
             <p className="text-xs text-surface-400">
-              ⚠️ การตั้งค่าจะมีผลทันที แต่จะรีเซ็ตเมื่อ restart server
+              ✅ การตั้งค่าจะถูกบันทึกลงฐานข้อมูล มีผลทันทีและคงอยู่แม้ restart server
             </p>
             <button
               onClick={handleSaveConfig}

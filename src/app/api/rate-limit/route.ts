@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getRateLimitStats, unblockIp, getRateLimitConfig, updateRateLimitConfig } from '@/lib/rate-limit';
+import { getRateLimitStats, unblockIp, getRateLimitConfig, updateRateLimitConfig, loadRateLimitConfigFromDb } from '@/lib/rate-limit';
+
+let configLoaded = false;
 
 // GET — ดึงสถิติ Rate Limit (admin only)
 export async function GET() {
@@ -8,6 +10,12 @@ export async function GET() {
     const session = await auth();
     if (!session?.user || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // โหลด config จาก DB ครั้งแรก
+    if (!configLoaded) {
+      await loadRateLimitConfigFromDb();
+      configLoaded = true;
     }
 
     const stats = getRateLimitStats();
@@ -68,7 +76,7 @@ export async function PUT(request: NextRequest) {
       if (body.login.blockDurationMs) updates.login.blockDurationMs = Number(body.login.blockDurationMs);
     }
 
-    const newConfig = updateRateLimitConfig(updates);
+    const newConfig = await updateRateLimitConfig(updates);
     return NextResponse.json({ success: true, config: newConfig });
   } catch (error) {
     console.error('PUT /api/rate-limit error:', error);

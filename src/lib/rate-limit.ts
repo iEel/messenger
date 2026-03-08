@@ -174,9 +174,9 @@ export function getRateLimitConfig() {
 }
 
 /**
- * ★ อัปเดต config (Admin action)
+ * ★ อัปเดต config (Admin action) + บันทึกลง DB
  */
-export function updateRateLimitConfig(updates: {
+export async function updateRateLimitConfig(updates: {
   general?: Partial<RateLimitConfig>;
   login?: Partial<RateLimitConfig>;
 }) {
@@ -186,5 +186,43 @@ export function updateRateLimitConfig(updates: {
   if (updates.login) {
     loginConfig = { ...loginConfig, ...updates.login };
   }
+
+  // บันทึกลง DB
+  try {
+    const { query: dbQuery } = await import('./db');
+    const configJson = JSON.stringify({ general: generalConfig, login: loginConfig });
+    await dbQuery(
+      `MERGE SystemSettings AS target
+       USING (SELECT 'rate_limit_config' AS SettingKey) AS source
+       ON target.SettingKey = source.SettingKey
+       WHEN MATCHED THEN UPDATE SET SettingValue = @val, UpdatedAt = GETDATE()
+       WHEN NOT MATCHED THEN INSERT (SettingKey, SettingValue) VALUES ('rate_limit_config', @val);`,
+      { val: configJson }
+    );
+  } catch (err) {
+    console.error('[RateLimit] Save config to DB error:', err);
+  }
+
   return getRateLimitConfig();
 }
+
+/**
+ * ★ โหลด config จาก DB (เรียกตอน startup)
+ */
+export async function loadRateLimitConfigFromDb() {
+  try {
+    const { query: dbQuery } = await import('./db');
+    const rows = await dbQuery<{ SettingValue: string }[]>(
+      `SELECT SettingValue FROM SystemSettings WHERE SettingKey = 'rate_limit_config'`
+    );
+    if (rows.length > 0 && rows[0].SettingValue) {
+      const saved = JSON.parse(rows[0].SettingValue);
+      if (saved.general) generalConfig = { ...generalConfig, ...saved.general };
+      if (saved.login) loginConfig = { ...loginConfig, ...saved.login };
+      console.log('[RateLimit] Config loaded from DB:', { general: generalConfig, login: loginConfig });
+    }
+  } catch (err) {
+    console.error('[RateLimit] Load config from DB error:', err);
+  }
+}
+

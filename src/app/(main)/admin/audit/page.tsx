@@ -52,18 +52,28 @@ const ACTION_CONFIG: Record<string, { label: string; icon: React.ReactNode; colo
   pod_uploaded:        { label: 'อัปโหลดหลักฐาน', icon: <Camera size={14} />, color: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400' },
 };
 
+// ★ MSSQL GETDATE() returns local server time but mssql driver may
+// serialize with 'Z' suffix, causing JS to interpret as UTC.
+// Strip 'Z' so JS treats it as local time.
+function parseLocalDate(dateStr: string): Date {
+  const cleaned = dateStr.replace('Z', '').replace('T', ' ');
+  return new Date(cleaned);
+}
+
 function formatDateTime(dateStr: string): string {
-  const d = new Date(dateStr);
+  const d = parseLocalDate(dateStr);
   const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
                    'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  const time = d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543} ${time}`;
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543} ${hh}:${mm}:${ss}`;
 }
 
 function timeAgo(dateStr: string): string {
   const now = new Date();
-  const d = new Date(dateStr);
-  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+  const d = parseLocalDate(dateStr);
+  const diff = Math.max(0, Math.floor((now.getTime() - d.getTime()) / 1000));
   if (diff < 60) return `${diff} วินาทีที่แล้ว`;
   if (diff < 3600) return `${Math.floor(diff / 60)} นาทีที่แล้ว`;
   if (diff < 86400) return `${Math.floor(diff / 3600)} ชั่วโมงที่แล้ว`;

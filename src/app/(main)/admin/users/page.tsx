@@ -236,7 +236,7 @@ export default function UsersListPage() {
                             <MoreVertical size={16} className="text-surface-400" />
                           </button>
                           {actionMenu === user.Id && (
-                            <div className="absolute right-0 top-full mt-1 w-44 bg-white dark:bg-surface-800 
+                            <div className="absolute right-0 bottom-full mb-1 w-44 bg-white dark:bg-surface-800 
                                             rounded-xl shadow-xl border border-surface-200 dark:border-surface-700 
                                             z-20 py-1 animate-fade-in">
                               <Link

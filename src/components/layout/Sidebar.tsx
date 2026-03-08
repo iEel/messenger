@@ -23,6 +23,7 @@ import {
   ClipboardList,
   Bike,
   Shield,
+  Activity,
 } from 'lucide-react';
 
 interface NavItem {
@@ -41,6 +42,7 @@ const navItems: (NavItem & { exact?: boolean })[] = [
   { label: 'รายงาน', href: '/dispatcher/analytics', icon: <BarChart3 size={20} />, roles: ['dispatcher', 'admin'] },
   { label: 'จัดการผู้ใช้', href: '/admin/users', icon: <Users size={20} />, roles: ['admin'] },
   { label: 'Audit Trail', href: '/admin/audit', icon: <Shield size={20} />, roles: ['admin'] },
+  { label: 'Rate Limiting', href: '/admin/rate-limit', icon: <Activity size={20} />, roles: ['admin'] },
   { label: 'ตั้งค่าระบบ', href: '/admin/settings', icon: <Settings size={20} />, roles: ['admin'] },
 ];
 

@@ -546,9 +546,17 @@ cancelled                         issue → return / reschedule
   - `test-email` → admin only
   - `messengers`, `push/subscribe`, `maps-resolve` → require login
   - `email-action` → ใช้ HMAC token (ปลอดภัยอยู่แล้ว)
-- ★ **Rate Limiting** — ป้องกัน brute force / request abuse
-  - `src/lib/rate-limit.ts` — In-memory sliding window + DB persistence
-  - General: 60 req/นาที (default), Login: 5 ครั้ง/นาที (default)
+- ★ **Rate Limiting** — ป้องกัน brute force / request abuse (Dual-Layer Architecture)
+  - **Layer 1 — Middleware** (`src/middleware.ts`, Edge Runtime):
+    - ป้องกันจริง — บล็อก request เกินกำหนด (429 Too Many Requests)
+    - Skip: NextAuth internal (`/api/auth/session`, `/providers`, `/csrf`) — ถูกเรียกบ่อยเกินไป
+  - **Layer 2 — API Tracking** (`src/lib/api-rate-limit.ts`, Node.js Runtime):
+    - `trackApiRequest(request)` — เรียกใน API routes เพื่อให้ Stats page เห็นข้อมูล
+    - ใช้ `globalThis` share memory ภายใน Node.js runtime
+    - เพิ่มใน: `tasks`, `analytics`, `trips`, `messengers`, `rate-limit`
+  - **สาเหตุ 2 Layer**: Edge Runtime (middleware) + Node.js (API) แยก process → share memory ไม่ได้
+  - `src/lib/rate-limit.ts` — In-memory sliding window + DB persistence (`SystemSettings`)
+  - General: 200 req/นาที (default), Login: 5 ครั้ง/นาที (default)
   - เกิน limit → บล็อก IP (General 5 นาที, Login 15 นาที)
   - IP detection: `cf-connecting-ip` / `x-forwarded-for` / `x-real-ip`
   - Config บันทึกลง `SystemSettings` table (คงอยู่แม้ restart)

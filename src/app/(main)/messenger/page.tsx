@@ -392,8 +392,8 @@ export default function MessengerPage() {
       {/* Trip Control */}
       <div className={`rounded-2xl p-5 shadow-[var(--shadow-card)] border transition-all duration-300
                        ${activeTrip
-                         ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-emerald-400'
-                         : 'bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700'}`}>
+          ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-emerald-400'
+          : 'bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700'}`}>
         {activeTrip ? (
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -582,7 +582,7 @@ export default function MessengerPage() {
                         )}
                       </div>
                       <p className="flex items-center gap-1.5">
-                        <MapPin size={13} className="shrink-0" /> 
+                        <MapPin size={13} className="shrink-0" />
                         <span className="truncate">{task.District ? `${task.District} • ` : ''}{task.Address}</span>
                       </p>
                       {officeCoords && task.Latitude && task.Longitude && (

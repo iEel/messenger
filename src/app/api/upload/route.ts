@@ -50,6 +50,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'ไม่พบใบงาน' }, { status: 404 });
     }
 
+    // ★ Auto-detect leg from task status
+    const taskStatus = await query<{ Status: string }[]>('SELECT Status FROM Tasks WHERE Id = @id', { id: parseInt(taskId) });
+    const isReturnLeg = ['return_picked_up', 'returning', 'returned'].includes(taskStatus[0]?.Status || '');
+    const leg = isReturnLeg ? 'return' : 'delivery';
+
     // Create upload directory
     const uploadDir = path.join(process.cwd(), 'uploads', 'pod', taskId);
     await mkdir(uploadDir, { recursive: true });
@@ -68,14 +73,15 @@ export async function POST(request: NextRequest) {
     // Save to database
     const relativePath = `pod/${taskId}/${fileName}`;
     await query(
-      `INSERT INTO ProofOfDelivery (TaskId, Type, FilePath, FileName, UploadedBy)
-       VALUES (@taskId, @type, @filePath, @fileName, @uploadedBy)`,
+      `INSERT INTO ProofOfDelivery (TaskId, Type, FilePath, FileName, UploadedBy, Leg)
+       VALUES (@taskId, @type, @filePath, @fileName, @uploadedBy, @leg)`,
       {
         taskId: parseInt(taskId),
         type,
         filePath: relativePath,
         fileName: file.name || fileName,
         uploadedBy: parseInt(session.user.id),
+        leg,
       }
     );
 

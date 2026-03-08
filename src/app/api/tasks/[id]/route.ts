@@ -43,8 +43,8 @@ export async function GET(
     );
 
     // ดึงหลักฐานการส่ง (POD)
-    const pod = await query<{ Id: number; Type: string; FilePath: string; FileName: string; CreatedAt: string }[]>(
-      `SELECT Id, Type, FilePath, FileName, CreatedAt
+    const pod = await query<{ Id: number; Type: string; FilePath: string; FileName: string; CreatedAt: string; Leg: string }[]>(
+      `SELECT Id, Type, FilePath, FileName, CreatedAt, Leg
        FROM ProofOfDelivery
        WHERE TaskId = @id
        ORDER BY CreatedAt ASC`,

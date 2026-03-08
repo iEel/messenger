@@ -77,6 +77,7 @@ interface PodEntry {
   FilePath: string;
   FileName: string;
   CreatedAt: string;
+  Leg: string;
 }
 
 export default function TaskDetailPage() {
@@ -358,45 +359,59 @@ export default function TaskDetailPage() {
             <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 shadow-[var(--shadow-card)] p-5">
               <h3 className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-3">📸 หลักฐานการส่ง</h3>
 
-              {/* รูปถ่าย */}
-              {pod.filter(p => p.Type === 'photo').length > 0 && (
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-surface-600 dark:text-surface-400 mb-2 flex items-center gap-1.5">
-                    <Camera size={14} /> รูปถ่าย ({pod.filter(p => p.Type === 'photo').length})
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {pod.filter(p => p.Type === 'photo').map(p => (
-                      <button key={p.Id} type="button"
-                        onClick={() => setLightboxImg(`/api/uploads/${p.FilePath}`)}
-                        className="relative aspect-square rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700
-                                   hover:ring-2 hover:ring-primary-400 transition-all cursor-pointer group">
-                        <img src={`/api/uploads/${p.FilePath}`} alt={p.FileName}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* ★ แยกตาม Leg (ขาไป / ขากลับ) */}
+              {[{ leg: 'delivery', label: '📤 ขาส่ง (ไป)' }, { leg: 'return', label: '📥 ขากลับ (คืน)' }]
+                .filter(section => pod.some(p => p.Leg === section.leg))
+                .map(section => {
+                  const sectionPod = pod.filter(p => p.Leg === section.leg);
+                  const photos = sectionPod.filter(p => p.Type === 'photo');
+                  const signatures = sectionPod.filter(p => p.Type === 'signature');
+                  return (
+                    <div key={section.leg} className={section.leg === 'return' ? 'mt-4 pt-4 border-t border-surface-200 dark:border-surface-700' : ''}>
+                      {pod.some(p => p.Leg === 'return') && (
+                        <p className="text-xs font-bold text-surface-600 dark:text-surface-300 mb-2">{section.label}</p>
+                      )}
 
-              {/* ลายเซ็น */}
-              {pod.filter(p => p.Type === 'signature').length > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-surface-600 dark:text-surface-400 mb-2">✍️ ลายเซ็นผู้รับ</p>
-                  {pod.filter(p => p.Type === 'signature').map(p => (
-                    <button key={p.Id} type="button"
-                      onClick={() => setLightboxImg(`/api/uploads/${p.FilePath}`)}
-                      className="rounded-xl border-2 border-dashed border-surface-200 dark:border-surface-700 bg-white p-2
-                                 overflow-hidden hover:ring-2 hover:ring-primary-400 transition-all cursor-pointer">
-                      <img src={`/api/uploads/${p.FilePath}`} alt="ลายเซ็น"
-                        className="max-h-32 mx-auto" />
-                    </button>
-                  ))}
-                </div>
-              )}
+                      {photos.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-sm font-medium text-surface-600 dark:text-surface-400 mb-2 flex items-center gap-1.5">
+                            <Camera size={14} /> รูปถ่าย ({photos.length})
+                          </p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {photos.map(p => (
+                              <button key={p.Id} type="button"
+                                onClick={() => setLightboxImg(`/api/uploads/${p.FilePath}`)}
+                                className="relative aspect-square rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700
+                                           hover:ring-2 hover:ring-primary-400 transition-all cursor-pointer group">
+                                <img src={`/api/uploads/${p.FilePath}`} alt={p.FileName}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-              <p className="text-[10px] text-surface-400 mt-3">
-                บันทึกเมื่อ {formatDateTimeShort(pod[0].CreatedAt)}
-              </p>
+                      {signatures.length > 0 && (
+                        <div>
+                          <p className="text-sm font-medium text-surface-600 dark:text-surface-400 mb-2">✍️ ลายเซ็นผู้รับ</p>
+                          {signatures.map(p => (
+                            <button key={p.Id} type="button"
+                              onClick={() => setLightboxImg(`/api/uploads/${p.FilePath}`)}
+                              className="rounded-xl border-2 border-dashed border-surface-200 dark:border-surface-700 bg-white p-2
+                                         overflow-hidden hover:ring-2 hover:ring-primary-400 transition-all cursor-pointer">
+                              <img src={`/api/uploads/${p.FilePath}`} alt="ลายเซ็น"
+                                className="max-h-32 mx-auto" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="text-[10px] text-surface-400 mt-2">
+                        บันทึกเมื่อ {formatDateTimeShort(sectionPod[0].CreatedAt)}
+                      </p>
+                    </div>
+                  );
+                })}
             </div>
           )}
         </div>

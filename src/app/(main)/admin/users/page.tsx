@@ -179,8 +179,9 @@ export default function UsersListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-100 dark:divide-surface-700">
-                {users.map((user) => {
+                {users.map((user, index) => {
                   const roleConf = ROLE_CONFIG[user.Role as UserRole];
+                  const openUpward = index >= users.length / 2;
                   return (
                     <tr key={user.Id} className="hover:bg-surface-50 dark:hover:bg-surface-700/30 transition-colors">
                       <td className="px-5 py-4">
@@ -236,9 +237,10 @@ export default function UsersListPage() {
                             <MoreVertical size={16} className="text-surface-400" />
                           </button>
                           {actionMenu === user.Id && (
-                            <div className="absolute right-0 bottom-full mb-1 w-44 bg-white dark:bg-surface-800 
+                            <div className={`absolute right-0 w-44 bg-white dark:bg-surface-800 
                                             rounded-xl shadow-xl border border-surface-200 dark:border-surface-700 
-                                            z-20 py-1 animate-fade-in">
+                                            z-20 py-1 animate-fade-in
+                                            ${openUpward ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
                               <Link
                                 href={`/admin/users/${user.Id}`}
                                 className="flex items-center gap-2 px-4 py-2.5 text-sm text-surface-700 dark:text-surface-300

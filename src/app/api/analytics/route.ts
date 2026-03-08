@@ -28,6 +28,15 @@ export async function GET(request: NextRequest) {
       dateCondition = `CAST(t.CreatedAt AS DATE) = CAST(GETDATE() AS DATE)`;
     }
 
+    // ★ Role-based filter: requester เห็นเฉพาะงานตัวเอง
+    const userId = parseInt(session.user.id);
+    const role = session.user.role;
+    let ownerCondition = '';
+    if (role === 'requester') {
+      ownerCondition = ` AND t.RequesterId = @userId`;
+      dateParams.userId = userId;
+    }
+
     // สถิติตามช่วงเวลา (นับ returned เป็น completed ด้วย)
     const todayStats = await query<{
       total: number; pending: number; assigned: number;
@@ -41,7 +50,7 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN Status IN ('completed','returned') THEN 1 ELSE 0 END) AS completed,
         SUM(CASE WHEN Status = 'issue' THEN 1 ELSE 0 END) AS issue
       FROM Tasks t
-      WHERE ${dateCondition}
+      WHERE ${dateCondition}${ownerCondition}
     `, dateParams);
 
     // สถิติรายวันในช่วงที่เลือก (หรือ 7 วันย้อนหลัง)
@@ -53,6 +62,10 @@ export async function GET(request: NextRequest) {
       weeklyParams.to = to;
     } else {
       weeklyCondition = `CreatedAt >= DATEADD(DAY, -6, CAST(GETDATE() AS DATE))`;
+    }
+    if (role === 'requester') {
+      weeklyCondition += ` AND RequesterId = @userId`;
+      weeklyParams.userId = userId;
     }
 
     const weeklyStats = await query<{
@@ -146,7 +159,13 @@ export async function GET(request: NextRequest) {
     `, tripParams);
 
     // จำนวน Tasks ทั้งหมด
-    const totalAll = await query<{ total: number }[]>(`SELECT COUNT(*) AS total FROM Tasks`);
+    const totalParams: Record<string, unknown> = {};
+    let totalWhere = '';
+    if (role === 'requester') {
+      totalWhere = ' WHERE RequesterId = @userId';
+      totalParams.userId = userId;
+    }
+    const totalAll = await query<{ total: number }[]>(`SELECT COUNT(*) AS total FROM Tasks${totalWhere}`, totalParams);
 
     return NextResponse.json({
       today: todayStats[0] || { total: 0, pending: 0, assigned: 0, in_transit: 0, completed: 0, issue: 0 },

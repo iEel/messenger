@@ -22,6 +22,7 @@ import {
   UserCircle,
   ClipboardList,
   Bike,
+  Shield,
 } from 'lucide-react';
 
 interface NavItem {
@@ -39,6 +40,7 @@ const navItems: (NavItem & { exact?: boolean })[] = [
   { label: 'จ่ายงาน', href: '/dispatcher', icon: <Truck size={20} />, roles: ['dispatcher', 'admin'], exact: true },
   { label: 'รายงาน', href: '/dispatcher/analytics', icon: <BarChart3 size={20} />, roles: ['dispatcher', 'admin'] },
   { label: 'จัดการผู้ใช้', href: '/admin/users', icon: <Users size={20} />, roles: ['admin'] },
+  { label: 'Audit Trail', href: '/admin/audit', icon: <Shield size={20} />, roles: ['admin', 'dispatcher'] },
   { label: 'ตั้งค่าระบบ', href: '/admin/settings', icon: <Settings size={20} />, roles: ['admin'] },
 ];
 

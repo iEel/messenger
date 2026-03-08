@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import type { Task, TaskStatusHistoryEntry } from '@/lib/types';
 import { sendMail, emailTaskAssigned, emailIssueAlert, emailTaskCompleted } from '@/lib/email';
 import { notifyTaskAssigned } from '@/lib/push';
+import { logAudit } from '@/lib/audit';
 
 // GET - ดึงรายละเอียด Task
 export async function GET(
@@ -137,6 +138,17 @@ export async function PATCH(
         notifyTaskAssigned(assignedTo, taskInfo[0].TaskNumber, taskInfo[0].DocumentDesc, taskInfo[0].RecipientName)
           .catch(err => console.error('[Push] Send failed:', err));
       }
+    }
+
+    // ★ Audit logging
+    if (status === 'assigned' && assignedTo) {
+      logAudit({ action: 'task_assigned', userId: parseInt(session.user.id), targetType: 'task', targetId: parseInt(id), details: `จ่ายงานให้แมส ID ${assignedTo}` });
+    } else if (status === 'cancelled') {
+      logAudit({ action: 'task_cancelled', userId: parseInt(session.user.id), targetType: 'task', targetId: parseInt(id), details: notes || 'ยกเลิกใบงาน' });
+    } else if (assignedTo === null) {
+      logAudit({ action: 'task_unassigned', userId: parseInt(session.user.id), targetType: 'task', targetId: parseInt(id), details: 'ดึงงานกลับ' });
+    } else if (status) {
+      logAudit({ action: 'task_status_changed', userId: parseInt(session.user.id), targetType: 'task', targetId: parseInt(id), details: `สถานะ → ${status}` });
     }
 
     return NextResponse.json({ message: 'อัปเดตสำเร็จ' });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import type { Task } from '@/lib/types';
+import { logAudit } from '@/lib/audit';
 
 // สร้างเลขที่ใบงานอัตโนมัติ
 async function generateTaskNumber(): Promise<string> {
@@ -184,6 +185,9 @@ export async function POST(request: NextRequest) {
        VALUES (@taskId, 'new', @userId, N'สร้างใบงานใหม่')`,
       { taskId: result[0].Id, userId: parseInt(session.user.id) }
     );
+
+    // ★ Audit log
+    logAudit({ action: 'task_created', userId: parseInt(session.user.id), targetType: 'task', targetId: result[0].Id, details: `${taskNumber} — ${documentDesc}` });
 
     return NextResponse.json(
       { message: 'สร้างใบงานสำเร็จ', taskId: result[0].Id, taskNumber },

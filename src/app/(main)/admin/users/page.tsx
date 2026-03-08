@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   Users,
@@ -52,6 +52,20 @@ export default function UsersListPage() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // ★ Click outside → close dropdown
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setActionMenu(null);
+      }
+    };
+    if (actionMenu !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [actionMenu]);
 
   const handleToggleActive = async (userId: number, currentActive: boolean) => {
     if (!confirm(currentActive ? 'ต้องการปิดการใช้งานผู้ใช้นี้?' : 'ต้องการเปิดการใช้งานผู้ใช้นี้?')) return;
@@ -214,7 +228,7 @@ export default function UsersListPage() {
                           : '—'}
                       </td>
                       <td className="px-5 py-4 text-center">
-                        <div className="relative inline-block">
+                        <div className="relative inline-block" ref={actionMenu === user.Id ? menuRef : undefined}>
                           <button
                             onClick={() => setActionMenu(actionMenu === user.Id ? null : user.Id)}
                             className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors cursor-pointer"

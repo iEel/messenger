@@ -28,7 +28,7 @@ interface RateLimitStats {
 // ★ Default config (mutable for admin changes)
 let generalConfig: RateLimitConfig = {
   windowMs: 60 * 1000,        // 1 นาที
-  maxRequests: 60,             // 60 requests/นาที
+  maxRequests: 200,            // 200 requests/นาที (Next.js SPA ส่ง request เยอะ)
   blockDurationMs: 5 * 60 * 1000, // บล็อก 5 นาที
 };
 

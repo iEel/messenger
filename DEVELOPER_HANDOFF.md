@@ -501,6 +501,14 @@ cancelled                         issue → return / reschedule
   - `src/components/toast.tsx` — Toast (success/error/warning/info) + Confirm Dialog
   - `useToast()` hook ใช้ได้ทุกหน้า (ToastProvider ครอบ layout)
   - หน้าจ่ายงานเปลี่ยนหมดแล้ว: จ่ายงาน, ดึงกลับ, ยกเลิก → Toast + Premium Confirm
+- ★ **PWA Push Notification** — แจ้งเตือนแมสเซ็นเจอร์เมื่อได้รับงานใหม่ แม้ปิดเบราว์เซอร์
+  - VAPID keys (Web Push protocol) — `.env.local`
+  - `public/sw.js` — push + notificationclick handlers
+  - `/api/push/subscribe` — บันทึก/ลบ push subscription (auto-create PushSubscriptions table)
+  - `src/lib/push.ts` — Web Push sender + auto-cleanup expired subscriptions
+  - `src/components/push-subscribe.tsx` — Auto-subscribe เมื่อ login
+  - Trigger: task PATCH → status `assigned` → ส่ง push ถึงแมสทันที
+  - ⚠️ ต้อง deploy บน **HTTPS** ถึงจะทำงาน (localhost ทดสอบได้บางส่วน)
 
 ---
 

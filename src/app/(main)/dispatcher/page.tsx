@@ -254,10 +254,29 @@ export default function DispatcherPage() {
   const selectAllNewTasks = () => {
     const newTaskIds = tasks.filter(t => t.Status === 'new').map(t => t.Id);
     if (newTaskIds.every(id => selectedTasks.has(id))) {
-      // deselect all
       setSelectedTasks(new Set());
     } else {
       setSelectedTasks(new Set(newTaskIds));
+    }
+  };
+
+  // ★ ดึงงานกลับ (assigned → new)
+  const handleUnassign = async (task: TaskItem) => {
+    const confirmed = window.confirm(`ดึงงาน ${task.TaskNumber} กลับเป็น "รอจ่ายงาน"?\nแมสเซ็นเจอร์: ${task.MessengerName}`);
+    if (!confirmed) return;
+    try {
+      await fetch(`/api/tasks/${task.Id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'new',
+          assignedTo: null,
+          notes: `ดึงงานกลับจาก ${task.MessengerName}`,
+        }),
+      });
+      fetchTasks();
+    } catch (error) {
+      console.error('Unassign error:', error);
     }
   };
 
@@ -438,9 +457,22 @@ export default function DispatcherPage() {
             )}
           </div>
 
+          {/* ★ ดึงงานกลับ (เฉพาะ assigned) */}
+          {task.Status === 'assigned' && (
+            <div className="mt-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleUnassign(task); }}
+                className="w-full py-1.5 rounded-lg text-xs font-medium text-amber-600 dark:text-amber-400
+                           hover:bg-amber-50 dark:hover:bg-amber-900/20
+                           transition-colors cursor-pointer flex items-center justify-center gap-1">
+                ↩️ ดึงงานกลับ
+              </button>
+            </div>
+          )}
+
           {/* ★ ปุ่มยกเลิก (ทุกสถานะยกเว้น completed/returned/cancelled) */}
           {!['completed', 'returned', 'cancelled'].includes(task.Status) && (
-            <div className="mt-2">
+            <div className={task.Status === 'assigned' ? '' : 'mt-2'}>
               <button
                 onClick={(e) => { e.stopPropagation(); handleCancelTask(task); }}
                 className="w-full py-1.5 rounded-lg text-xs font-medium text-red-500 dark:text-red-400

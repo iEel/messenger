@@ -606,18 +606,23 @@ export default function MessengerPage() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">
-                      {/* Navigate */}
-                      {task.Latitude && task.Longitude && (
-                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=two_wheeler`}
-                          target="_blank" rel="noopener noreferrer"
-                          className="flex-1 py-2.5 rounded-xl text-xs font-medium text-center
-                                     border border-surface-200 dark:border-surface-700
-                                     text-surface-700 dark:text-surface-300
-                                     hover:bg-surface-100 dark:hover:bg-surface-700
-                                     flex items-center justify-center gap-1.5 transition-colors">
-                          <Navigation size={14} /> นำทาง
-                        </a>
-                      )}
+                      {/* Navigate — ขากลับนำทางไป Office */}
+                      {(() => {
+                        const isReturnLeg = ['return_picked_up', 'returning'].includes(task.Status);
+                        const navLat = isReturnLeg && officeCoords ? officeCoords.lat : task.Latitude;
+                        const navLng = isReturnLeg && officeCoords ? officeCoords.lng : task.Longitude;
+                        const navLabel = isReturnLeg ? '🏢 นำทางกลับ' : 'นำทาง';
+                        return navLat && navLng ? (
+                          <a href={`https://www.google.com/maps/dir/?api=1&destination=${navLat},${navLng}&travelmode=two_wheeler`}
+                            target="_blank" rel="noopener noreferrer"
+                            className={`flex-1 py-2.5 rounded-xl text-xs font-medium text-center
+                                       border ${isReturnLeg ? 'border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400' : 'border-surface-200 dark:border-surface-700 text-surface-700 dark:text-surface-300'}
+                                       hover:bg-surface-100 dark:hover:bg-surface-700
+                                       flex items-center justify-center gap-1.5 transition-colors`}>
+                            <Navigation size={14} /> {navLabel}
+                          </a>
+                        ) : null;
+                      })()}
 
                       {/* Next Action */}
                       {nextAction && (

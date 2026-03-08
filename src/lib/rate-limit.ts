@@ -25,38 +25,56 @@ interface RateLimitStats {
   remainingMs: number;
 }
 
-// ★ Default config (mutable for admin changes)
-let generalConfig: RateLimitConfig = {
-  windowMs: 60 * 1000,        // 1 นาที
-  maxRequests: 200,            // 200 requests/นาที (Next.js SPA ส่ง request เยอะ)
-  blockDurationMs: 5 * 60 * 1000, // บล็อก 5 นาที
+// ★ ใช้ globalThis เพื่อให้ middleware + API routes ใช้ข้อมูลร่วมกัน
+// (Next.js middleware/API อาจ import module แยกกัน → Map คนละตัว)
+const g = globalThis as unknown as {
+  __rateLimitGeneral?: Map<string, RateLimitEntry>;
+  __rateLimitLogin?: Map<string, RateLimitEntry>;
+  __rateLimitGeneralConfig?: RateLimitConfig;
+  __rateLimitLoginConfig?: RateLimitConfig;
 };
 
-// ★ Login-specific config (เข้มงวดกว่า)
-let loginConfig: RateLimitConfig = {
-  windowMs: 60 * 1000,        // 1 นาที
-  maxRequests: 5,              // 5 ครั้ง/นาที
-  blockDurationMs: 15 * 60 * 1000, // บล็อก 15 นาที
-};
+if (!g.__rateLimitGeneral) g.__rateLimitGeneral = new Map();
+if (!g.__rateLimitLogin) g.__rateLimitLogin = new Map();
 
-// In-memory stores
-const generalStore = new Map<string, RateLimitEntry>();
-const loginStore = new Map<string, RateLimitEntry>();
+// ★ Config ก็เก็บใน globalThis เผื่อ module ถูก load ซ้ำ
+if (!g.__rateLimitGeneralConfig) {
+  g.__rateLimitGeneralConfig = {
+    windowMs: 60 * 1000,
+    maxRequests: 200,
+    blockDurationMs: 5 * 60 * 1000,
+  };
+}
+if (!g.__rateLimitLoginConfig) {
+  g.__rateLimitLoginConfig = {
+    windowMs: 60 * 1000,
+    maxRequests: 5,
+    blockDurationMs: 15 * 60 * 1000,
+  };
+}
+
+// Aliases สำหรับใช้ในไฟล์นี้
+const generalStore = g.__rateLimitGeneral;
+const loginStore = g.__rateLimitLogin;
+let generalConfig = g.__rateLimitGeneralConfig;
+let loginConfig = g.__rateLimitLoginConfig;
 
 // Auto-cleanup every 10 minutes
-setInterval(() => {
-  const now = Date.now();
-  [generalStore, loginStore].forEach(store => {
-    for (const [key, entry] of store) {
-      const maxAge = entry.blocked
-        ? (entry.blockedAt || now) + generalConfig.blockDurationMs
-        : entry.firstRequest + generalConfig.windowMs;
-      if (now > maxAge + 60000) {
-        store.delete(key);
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    [generalStore, loginStore].forEach(store => {
+      for (const [key, entry] of store) {
+        const maxAge = entry.blocked
+          ? (entry.blockedAt || now) + generalConfig.blockDurationMs
+          : entry.firstRequest + generalConfig.windowMs;
+        if (now > maxAge + 60000) {
+          store.delete(key);
+        }
       }
-    }
-  });
-}, 10 * 60 * 1000);
+    });
+  }, 10 * 60 * 1000);
+}
 
 /**
  * ★ ตรวจสอบ rate limit
@@ -182,9 +200,11 @@ export async function updateRateLimitConfig(updates: {
 }) {
   if (updates.general) {
     generalConfig = { ...generalConfig, ...updates.general };
+    g.__rateLimitGeneralConfig = generalConfig;
   }
   if (updates.login) {
     loginConfig = { ...loginConfig, ...updates.login };
+    g.__rateLimitLoginConfig = loginConfig;
   }
 
   // บันทึกลง DB

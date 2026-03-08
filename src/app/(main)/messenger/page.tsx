@@ -22,6 +22,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
+import { PullToRefresh } from '@/components/pull-to-refresh';
 
 interface AssignedTask {
   Id: number;
@@ -388,6 +389,7 @@ export default function MessengerPage() {
   const fullTripUrl = buildFullTripUrl();
 
   return (
+    <PullToRefresh onRefresh={fetchData}>
     <div className="max-w-lg mx-auto space-y-5 animate-fade-in pb-8">
       {/* Trip Control */}
       <div className={`rounded-2xl p-5 shadow-[var(--shadow-card)] border transition-all duration-300
@@ -665,5 +667,6 @@ export default function MessengerPage() {
         )}
       </div>
     </div>
+    </PullToRefresh>
   );
 }

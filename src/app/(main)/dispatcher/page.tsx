@@ -28,6 +28,7 @@ import {
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
 import { formatDateTimeShort } from '@/lib/date-utils';
 import { useToast } from '@/components/toast';
+import { PullToRefresh } from '@/components/pull-to-refresh';
 
 interface TaskItem {
   Id: number;
@@ -507,6 +508,7 @@ export default function DispatcherPage() {
   };
 
   return (
+    <PullToRefresh onRefresh={fetchTasks}>
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -745,5 +747,6 @@ export default function DispatcherPage() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }

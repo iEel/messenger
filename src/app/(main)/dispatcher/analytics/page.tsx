@@ -16,6 +16,7 @@ import {
   Users,
   Bike,
   Download,
+  Calendar,
 } from 'lucide-react';
 
 interface TodayStats {
@@ -40,6 +41,36 @@ const DAY_NAMES: Record<number, string> = {
   0: 'อา', 1: 'จ', 2: 'อ', 3: 'พ', 4: 'พฤ', 5: 'ศ', 6: 'ส',
 };
 
+type DatePreset = 'today' | 'week' | 'month' | 'custom';
+
+function getPresetDates(preset: DatePreset): { from: string; to: string } {
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+
+  switch (preset) {
+    case 'today':
+      return { from: today, to: today };
+    case 'week': {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(weekAgo.getDate() - 6);
+      return { from: weekAgo.toISOString().split('T')[0], to: today };
+    }
+    case 'month': {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      return { from: monthStart.toISOString().split('T')[0], to: today };
+    }
+    default:
+      return { from: today, to: today };
+  }
+}
+
+function formatDateThai(dateStr: string): string {
+  const d = new Date(dateStr);
+  const months = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.',
+                   'ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear() + 543}`;
+}
+
 export default function AnalyticsPage() {
   const [today, setToday] = useState<TodayStats | null>(null);
   const [weekly, setWeekly] = useState<DailyData[]>([]);
@@ -49,44 +80,81 @@ export default function AnalyticsPage() {
   const [totalTasks, setTotalTasks] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/analytics');
-        const data = await res.json();
-        setToday(data.today);
-        setWeekly(data.weekly || []);
-        setTopMessengers(data.topMessengers || []);
-        setWorkload(data.workload || []);
-        setTripStats(data.tripStats || null);
-        setTotalTasks(data.totalTasks || 0);
-      } catch (error) {
-        console.error('Analytics fetch error:', error);
-      } finally {
-        setIsLoading(false);
+  // ★ Date range state
+  const [preset, setPreset] = useState<DatePreset>('today');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const fetchData = useCallback(async (from?: string, to?: string) => {
+    setIsLoading(true);
+    try {
+      let url = '/api/analytics';
+      if (from && to) {
+        url += `?from=${from}&to=${to}`;
       }
-    };
-    fetchData();
+      const res = await fetch(url);
+      const data = await res.json();
+      setToday(data.today);
+      setWeekly(data.weekly || []);
+      setTopMessengers(data.topMessengers || []);
+      setWorkload(data.workload || []);
+      setTripStats(data.tripStats || null);
+      setTotalTasks(data.totalTasks || 0);
+    } catch (error) {
+      console.error('Analytics fetch error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Initial load + react to preset changes
+  useEffect(() => {
+    if (preset !== 'custom') {
+      const { from, to } = getPresetDates(preset);
+      setDateFrom(from);
+      setDateTo(to);
+      if (preset === 'today') {
+        fetchData(); // no params = server default (today)
+      } else {
+        fetchData(from, to);
+      }
+    }
+  }, [preset, fetchData]);
+
+  // Custom date search
+  const handleCustomSearch = () => {
+    if (dateFrom && dateTo) {
+      fetchData(dateFrom, dateTo);
+    }
+  };
 
   const completionRate = today && today.total > 0
     ? Math.round((today.completed / today.total) * 100) : 0;
 
   const maxDaily = Math.max(...weekly.map(d => d.total), 1);
 
+  // ★ Date range label
+  const getDateLabel = () => {
+    if (preset === 'today') return `📊 สถิติวันนี้ (${formatDateThai(dateFrom)})`;
+    if (preset === 'week') return `📊 สถิติ 7 วัน (${formatDateThai(dateFrom)} - ${formatDateThai(dateTo)})`;
+    if (preset === 'month') return `📊 สถิติเดือนนี้ (${formatDateThai(dateFrom)} - ${formatDateThai(dateTo)})`;
+    return `📊 สถิติ ${formatDateThai(dateFrom)} - ${formatDateThai(dateTo)}`;
+  };
+
   // ★ Export CSV
   const handleExportCSV = useCallback(() => {
     if (!today || workload.length === 0) return;
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const bom = '\uFEFF'; // UTF-8 BOM สำหรับ Excel ไทย
+    const bom = '\uFEFF';
     let csv = bom;
 
     // Header
-    csv += `รายงานประจำวัน ${todayStr}\n\n`;
+    csv += `รายงาน ${formatDateThai(dateFrom)}`;
+    if (dateFrom !== dateTo) csv += ` - ${formatDateThai(dateTo)}`;
+    csv += `\n\n`;
 
-    // สถิติวันนี้
-    csv += `สถิติวันนี้\n`;
+    // สถิติ
+    csv += `สถิติรวม\n`;
     csv += `ทั้งหมด,รอจ่าย,จ่ายแล้ว,กำลังส่ง,สำเร็จ,มีปัญหา\n`;
     csv += `${today.total},${today.pending},${today.assigned},${today.in_transit},${today.completed},${today.issue}\n\n`;
 
@@ -106,28 +174,30 @@ export default function AnalyticsPage() {
     }
 
     // Top Messengers
-    csv += `แมสเซ็นเจอร์ดีเด่น (เดือนนี้)\n`;
+    csv += `แมสเซ็นเจอร์ดีเด่น\n`;
     csv += `อันดับ,ชื่อ,งานสำเร็จ,เวลาเฉลี่ย (นาที)\n`;
     topMessengers.forEach((m, i) => {
       csv += `${i + 1},${m.FullName},${m.completed},${m.avgMinutes || '-'}\n`;
     });
 
-    // 7 วันย้อนหลัง
-    csv += `\n7 วันย้อนหลัง\n`;
-    csv += `วัน,ทั้งหมด,สำเร็จ\n`;
-    weekly.forEach(d => {
-      csv += `${d.day},${d.total},${d.completed}\n`;
-    });
+    // รายวัน
+    if (weekly.length > 0) {
+      csv += `\nรายวัน\n`;
+      csv += `วัน,ทั้งหมด,สำเร็จ\n`;
+      weekly.forEach(d => {
+        csv += `${d.day},${d.total},${d.completed}\n`;
+      });
+    }
 
     // Download
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `report_${todayStr}.csv`;
+    a.download = `report_${dateFrom}_${dateTo}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [today, workload, tripStats, topMessengers, weekly]);
+  }, [today, workload, tripStats, topMessengers, weekly, dateFrom, dateTo]);
 
   if (isLoading) {
     return (
@@ -173,10 +243,57 @@ export default function AnalyticsPage() {
         </button>
       </div>
 
-      {/* Today Stats */}
+      {/* ★ Date Range Picker */}
+      <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
+                       shadow-[var(--shadow-card)] p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-surface-700 dark:text-surface-300">
+            <Calendar size={16} className="text-primary-500" />
+            ช่วงเวลา:
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { key: 'today', label: 'วันนี้' },
+              { key: 'week', label: 'สัปดาห์นี้' },
+              { key: 'month', label: 'เดือนนี้' },
+              { key: 'custom', label: 'กำหนดเอง' },
+            ] as { key: DatePreset; label: string }[]).map(p => (
+              <button key={p.key}
+                onClick={() => setPreset(p.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer
+                  ${preset === p.key
+                    ? 'bg-primary-500 text-white shadow-md'
+                    : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-600'
+                  }`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {preset === 'custom' && (
+            <div className="flex items-center gap-2 mt-2 sm:mt-0">
+              <input type="date" value={dateFrom}
+                onChange={e => setDateFrom(e.target.value)}
+                className="px-3 py-1.5 rounded-lg border border-surface-300 dark:border-surface-600
+                           bg-white dark:bg-surface-700 text-sm text-surface-800 dark:text-white" />
+              <span className="text-surface-400 text-xs">ถึง</span>
+              <input type="date" value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
+                className="px-3 py-1.5 rounded-lg border border-surface-300 dark:border-surface-600
+                           bg-white dark:bg-surface-700 text-sm text-surface-800 dark:text-white" />
+              <button onClick={handleCustomSearch}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white
+                           bg-primary-500 hover:bg-primary-600 cursor-pointer transition-colors">
+                ดู
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Header */}
       <div>
         <h2 className="text-sm font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-3">
-          📊 สถิติวันนี้
+          {getDateLabel()}
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
@@ -205,7 +322,7 @@ export default function AnalyticsPage() {
         <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
                          shadow-[var(--shadow-card)] p-6">
           <h3 className="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-4 flex items-center gap-2">
-            <Bike size={16} className="text-blue-500" /> 🏍️ สรุปรอบวิ่งวันนี้
+            <Bike size={16} className="text-blue-500" /> 🏍️ สรุปรอบวิ่ง
           </h3>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
@@ -233,7 +350,7 @@ export default function AnalyticsPage() {
         <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
                          shadow-[var(--shadow-card)] p-6">
           <h3 className="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-4 flex items-center gap-2">
-            <Users size={16} className="text-indigo-500" /> 📋 Workload แมสเซ็นเจอร์วันนี้
+            <Users size={16} className="text-indigo-500" /> 📋 Workload แมสเซ็นเจอร์
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -274,12 +391,12 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Completion Rate + Weekly Chart (side-by-side) */}
+      {/* Completion Rate + Daily Chart (side-by-side) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Completion Rate */}
         <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
                          shadow-[var(--shadow-card)] p-6">
-          <h3 className="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-4">🎯 อัตราสำเร็จวันนี้</h3>
+          <h3 className="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-4">🎯 อัตราสำเร็จ</h3>
           <div className="flex items-center gap-6">
             <div className="relative w-28 h-28">
               <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
@@ -302,10 +419,10 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Weekly Bar Chart */}
+        {/* Daily Bar Chart */}
         <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
                          shadow-[var(--shadow-card)] p-6">
-          <h3 className="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-4">📈 7 วันย้อนหลัง</h3>
+          <h3 className="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-4">📈 รายวัน</h3>
           {weekly.length > 0 ? (
             <div className="flex items-end gap-2 h-32">
               {weekly.map((day, i) => {
@@ -340,7 +457,7 @@ export default function AnalyticsPage() {
       <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
                        shadow-[var(--shadow-card)] p-6">
         <h3 className="text-sm font-semibold text-surface-700 dark:text-surface-300 mb-4 flex items-center gap-2">
-          <Trophy size={16} className="text-amber-500" /> แมสเซ็นเจอร์ดีเด่น (เดือนนี้)
+          <Trophy size={16} className="text-amber-500" /> แมสเซ็นเจอร์ดีเด่น
         </h3>
         {topMessengers.length > 0 ? (
           <div className="space-y-3">

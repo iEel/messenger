@@ -5,6 +5,7 @@ import { query } from './db';
 import type { User } from './types';
 import { logAudit } from './audit';
 import { ldapAuthenticate } from './ldap';
+import { getPool } from './db';
 
 declare module 'next-auth' {
   interface Session {
@@ -51,9 +52,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const username = (credentials.employeeId as string).trim();
         const password = credentials.password as string;
 
-        // ★ STEP 1: ลอง Local User ก่อน
+        // ★ Auto-add AdUsername column if not exists
+        try {
+          const pool = await getPool();
+          await pool.request().query(`
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'AdUsername')
+            ALTER TABLE Users ADD AdUsername NVARCHAR(100) NULL
+          `);
+        } catch { /* ignore */ }
+
+        // ★ STEP 1: ลอง Local User ก่อน (ค้นหาทั้ง EmployeeId และ AdUsername)
         const users = await query<User[]>(
-          'SELECT * FROM Users WHERE (EmployeeId = @username OR Email = @username) AND IsActive = 1',
+          'SELECT * FROM Users WHERE (EmployeeId = @username OR AdUsername = @username) AND IsActive = 1',
           { username }
         );
 
@@ -86,9 +96,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             await query(
               `UPDATE Users SET 
                 FullName = @fullName, Email = @email, Department = @department,
+                AdUsername = @adUsername,
                 LastLoginAt = GETDATE(), UpdatedAt = GETDATE()
                WHERE Id = @id`,
-              { id: user.Id, fullName: ldapUser.cn, email: ldapUser.mail, department: ldapUser.department }
+              { id: user.Id, fullName: ldapUser.cn, email: ldapUser.mail, department: ldapUser.department, adUsername: username }
             );
             logAudit({ action: 'user_login', userId: user.Id, details: `${ldapUser.cn} (AD) เข้าสู่ระบบ` });
 
@@ -108,10 +119,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // ★ STEP 2: ไม่เจอใน DB (by username) → ลอง LDAP
         const ldapUser = await ldapAuthenticate(username, password);
         if (ldapUser) {
-          // เช็คว่า EmployeeId จาก AD มีอยู่ใน DB แล้วหรือไม่
+          // เช็คว่า EmployeeId จาก AD หรือ AdUsername มีอยู่ใน DB แล้วหรือไม่
           const existingByEmpId = await query<User[]>(
-            'SELECT * FROM Users WHERE EmployeeId = @empId AND IsActive = 1',
-            { empId: ldapUser.employeeID }
+            'SELECT * FROM Users WHERE (EmployeeId = @empId OR AdUsername = @username) AND IsActive = 1',
+            { empId: ldapUser.employeeID, username }
           );
 
           if (existingByEmpId.length > 0) {
@@ -120,9 +131,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             await query(
               `UPDATE Users SET 
                 FullName = @fullName, Email = @email, Department = @department,
+                AdUsername = @adUsername,
                 LastLoginAt = GETDATE(), UpdatedAt = GETDATE()
                WHERE Id = @id`,
-              { id: existing.Id, fullName: ldapUser.cn, email: ldapUser.mail, department: ldapUser.department }
+              { id: existing.Id, fullName: ldapUser.cn, email: ldapUser.mail, department: ldapUser.department, adUsername: username }
             );
             logAudit({ action: 'user_login', userId: existing.Id, details: `${ldapUser.cn} (AD) เข้าสู่ระบบ` });
 
@@ -138,15 +150,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           // ★ ไม่มีเลย → สร้าง user ใหม่ (role = requester / พนักงาน)
           const result = await query<{ Id: number }[]>(
-            `INSERT INTO Users (EmployeeId, FullName, Email, Phone, PasswordHash, Role, Department, IsActive)
+            `INSERT INTO Users (EmployeeId, FullName, Email, Phone, PasswordHash, Role, Department, IsActive, AdUsername)
              OUTPUT INSERTED.Id
-             VALUES (@employeeId, @fullName, @email, NULL, @passwordHash, 'requester', @department, 1)`,
+             VALUES (@employeeId, @fullName, @email, NULL, @passwordHash, 'requester', @department, 1, @adUsername)`,
             {
               employeeId: ldapUser.employeeID || username,
               fullName: ldapUser.cn,
               email: ldapUser.mail || '',
               passwordHash: 'AD_USER_NO_LOCAL_PASSWORD',
               department: ldapUser.department || null,
+              adUsername: username,
             }
           );
 

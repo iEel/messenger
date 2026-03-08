@@ -390,9 +390,28 @@ export default function DispatcherPage() {
 
           <div className="mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">
             {task.MessengerName ? (
-              <p className="text-xs text-surface-500 flex items-center gap-1.5">
-                🏍️ <span className="font-medium text-surface-700 dark:text-surface-300">{task.MessengerName}</span>
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-surface-500 flex items-center gap-1.5 flex-1">
+                  🏍️ <span className="font-medium text-surface-700 dark:text-surface-300">{task.MessengerName}</span>
+                </p>
+                {/* ★ เปลี่ยนแมส — เฉพาะสถานะ assigned */}
+                {task.Status === 'assigned' && !isQuickAssigning && (
+                  <select
+                    defaultValue=""
+                    onChange={(e) => { if (e.target.value) handleQuickAssign(task.Id, parseInt(e.target.value)); }}
+                    className="py-1 px-2 rounded-md text-[10px] font-medium text-amber-600 dark:text-amber-400
+                               bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800
+                               cursor-pointer appearance-none focus:outline-none focus:ring-1 focus:ring-amber-400">
+                    <option value="" disabled>🔄 เปลี่ยน</option>
+                    {messengers.filter(m => m.Id !== task.AssignedTo).map(m => (
+                      <option key={m.Id} value={m.Id}>{m.FullName}</option>
+                    ))}
+                  </select>
+                )}
+                {task.Status === 'assigned' && isQuickAssigning && (
+                  <Loader2 size={14} className="animate-spin text-amber-500" />
+                )}
+              </div>
             ) : task.Status === 'new' ? (
               /* ★ Quick Assign Dropdown */
               <div className="relative">

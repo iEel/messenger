@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import type { Task } from '@/lib/types';
 import { logAudit } from '@/lib/audit';
+import { trackApiRequest } from '@/lib/api-rate-limit';
 
 // สร้างเลขที่ใบงานอัตโนมัติ
 async function generateTaskNumber(): Promise<string> {
@@ -32,6 +33,7 @@ async function generateTaskNumber(): Promise<string> {
 // GET - ดึงรายการ Task
 export async function GET(request: NextRequest) {
   try {
+    trackApiRequest(request);
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

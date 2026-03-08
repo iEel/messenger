@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getRateLimitStats, unblockIp, getRateLimitConfig, updateRateLimitConfig, loadRateLimitConfigFromDb } from '@/lib/rate-limit';
+import { trackApiRequest } from '@/lib/api-rate-limit';
 
 let configLoaded = false;
 
 // GET — ดึงสถิติ Rate Limit (admin only)
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    trackApiRequest(request);
     const session = await auth();
     if (!session?.user || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

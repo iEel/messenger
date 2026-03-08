@@ -1,10 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { trackApiRequest } from '@/lib/api-rate-limit';
 
 // GET - ดึงรายชื่อแมสเซ็นเจอร์ที่ active
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    trackApiRequest(request);
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

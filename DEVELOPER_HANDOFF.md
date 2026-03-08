@@ -516,6 +516,9 @@ cancelled                         issue → return / reschedule
   - Preset: วันนี้ / สัปดาห์นี้ / เดือนนี้ / กำหนดเอง (date picker)
   - API `/api/analytics` รองรับ `?from=YYYY-MM-DD&to=YYYY-MM-DD`
   - สถิติ, กราฟ, workload, แมสดีเด่น, สรุปรอบวิ่ง + CSV export ตามช่วงเวลาที่เลือก
+- ★ **Dark Mode Fix** — แก้ปุ่ม Dark Mode ที่กดแล้วไม่ทำงาน
+  - Tailwind v4 ต้องเพิ่ม `@custom-variant dark (.dark &)` ใน `globals.css`
+  - `ThemeProvider` toggle `.dark` class บน `<html>` — ทำงานถูกต้องแล้ว
 
 ---
 

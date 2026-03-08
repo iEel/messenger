@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, getPool } from '@/lib/db';
 import { auth } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -8,6 +8,24 @@ export async function GET(request: NextRequest) {
     if (!session?.user || session.user.role !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Ensure table exists
+    const pool = await getPool();
+    await pool.request().query(`
+      IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'AuditLog')
+      CREATE TABLE AuditLog (
+        Id INT IDENTITY(1,1) PRIMARY KEY,
+        Action NVARCHAR(50) NOT NULL,
+        UserId INT NOT NULL,
+        UserName NVARCHAR(100),
+        TargetType NVARCHAR(50),
+        TargetId INT,
+        Details NVARCHAR(MAX),
+        IpAddress NVARCHAR(50),
+        CreatedAt DATETIME2 DEFAULT GETDATE(),
+        CONSTRAINT FK_AuditLog_User FOREIGN KEY (UserId) REFERENCES Users(Id)
+      )
+    `);
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');

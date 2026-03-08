@@ -11,6 +11,8 @@ import {
   Globe,
   LogIn,
   Activity,
+  Settings,
+  Save,
 } from 'lucide-react';
 
 interface RateLimitEntry {
@@ -59,6 +61,16 @@ export default function RateLimitPage() {
   const [data, setData] = useState<RateLimitData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // Editable config state
+  const [generalMax, setGeneralMax] = useState(60);
+  const [generalWindowMin, setGeneralWindowMin] = useState(1);
+  const [generalBlockMin, setGeneralBlockMin] = useState(5);
+  const [loginMax, setLoginMax] = useState(5);
+  const [loginWindowMin, setLoginWindowMin] = useState(1);
+  const [loginBlockMin, setLoginBlockMin] = useState(15);
 
   const fetchData = useCallback(async () => {
     try {
@@ -67,6 +79,13 @@ export default function RateLimitPage() {
         const json = await res.json();
         setData(json);
         setLastRefresh(new Date());
+        // Sync config to form
+        setGeneralMax(json.config.general.maxRequests);
+        setGeneralWindowMin(json.config.general.windowMs / 60000);
+        setGeneralBlockMin(json.config.general.blockDurationMs / 60000);
+        setLoginMax(json.config.login.maxRequests);
+        setLoginWindowMin(json.config.login.windowMs / 60000);
+        setLoginBlockMin(json.config.login.blockDurationMs / 60000);
       }
     } catch (error) {
       console.error('Fetch rate-limit error:', error);
@@ -77,7 +96,7 @@ export default function RateLimitPage() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 10000); // Auto-refresh 10s
+    const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -92,6 +111,38 @@ export default function RateLimitPage() {
       if (res.ok) fetchData();
     } catch (error) {
       console.error('Unblock error:', error);
+    }
+  };
+
+  const handleSaveConfig = async () => {
+    setIsSaving(true);
+    setSaveSuccess(false);
+    try {
+      const res = await fetch('/api/rate-limit', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          general: {
+            maxRequests: generalMax,
+            windowMs: generalWindowMin * 60000,
+            blockDurationMs: generalBlockMin * 60000,
+          },
+          login: {
+            maxRequests: loginMax,
+            windowMs: loginWindowMin * 60000,
+            blockDurationMs: loginBlockMin * 60000,
+          },
+        }),
+      });
+      if (res.ok) {
+        setSaveSuccess(true);
+        fetchData();
+        setTimeout(() => setSaveSuccess(false), 3000);
+      }
+    } catch (error) {
+      console.error('Save config error:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -314,51 +365,151 @@ export default function RateLimitPage() {
         )}
       </div>
 
-      {/* Config Info */}
-      {data && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
-            <h3 className="font-bold text-surface-800 dark:text-white flex items-center gap-2 mb-4">
-              <Globe size={18} className="text-indigo-500" />
-              General Rate Limit
-            </h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-surface-500">Request Limit</span>
-                <span className="font-mono font-bold text-surface-800 dark:text-white">
-                  {data.config.general.maxRequests} / {formatDuration(data.config.general.windowMs)}
-                </span>
+      {/* ★ Settings Section */}
+      <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
+                       shadow-[var(--shadow-card)]">
+        <div className="px-6 py-4 border-b border-surface-200 dark:border-surface-700 flex items-center justify-between">
+          <h2 className="font-bold text-surface-800 dark:text-white flex items-center gap-2">
+            <Settings size={18} />
+            ตั้งค่า Rate Limit
+          </h2>
+          {saveSuccess && (
+            <span className="inline-flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400 animate-fade-in">
+              <CheckCircle size={16} />
+              บันทึกเรียบร้อย
+            </span>
+          )}
+        </div>
+
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* General Config */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-surface-700 dark:text-surface-300 flex items-center gap-2">
+                <Globe size={16} className="text-indigo-500" />
+                General Rate Limit
+              </h3>
+              <div>
+                <label className="block text-sm text-surface-500 dark:text-surface-400 mb-1">
+                  จำนวน Request สูงสุด (ต่อ window)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={generalMax}
+                  onChange={(e) => setGeneralMax(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
+                             bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-white
+                             focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                />
               </div>
-              <div className="flex justify-between">
-                <span className="text-surface-500">Block Duration</span>
-                <span className="font-mono font-bold text-surface-800 dark:text-white">
-                  {formatDuration(data.config.general.blockDurationMs)}
-                </span>
+              <div>
+                <label className="block text-sm text-surface-500 dark:text-surface-400 mb-1">
+                  Window (นาที)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={generalWindowMin}
+                  onChange={(e) => setGeneralWindowMin(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
+                             bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-white
+                             focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-surface-500 dark:text-surface-400 mb-1">
+                  ระยะเวลาบล็อก (นาที)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={generalBlockMin}
+                  onChange={(e) => setGeneralBlockMin(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
+                             bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-white
+                             focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Login Config */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-surface-700 dark:text-surface-300 flex items-center gap-2">
+                <LogIn size={16} className="text-amber-500" />
+                Login Rate Limit
+              </h3>
+              <div>
+                <label className="block text-sm text-surface-500 dark:text-surface-400 mb-1">
+                  จำนวน Login สูงสุด (ต่อ window)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={loginMax}
+                  onChange={(e) => setLoginMax(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
+                             bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-white
+                             focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-surface-500 dark:text-surface-400 mb-1">
+                  Window (นาที)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={loginWindowMin}
+                  onChange={(e) => setLoginWindowMin(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
+                             bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-white
+                             focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-surface-500 dark:text-surface-400 mb-1">
+                  ระยะเวลาบล็อก (นาที)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={loginBlockMin}
+                  onChange={(e) => setLoginBlockMin(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
+                             bg-surface-50 dark:bg-surface-900 text-surface-800 dark:text-white
+                             focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                />
               </div>
             </div>
           </div>
-          <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-6">
-            <h3 className="font-bold text-surface-800 dark:text-white flex items-center gap-2 mb-4">
-              <LogIn size={18} className="text-amber-500" />
-              Login Rate Limit
-            </h3>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-surface-500">Login Limit</span>
-                <span className="font-mono font-bold text-surface-800 dark:text-white">
-                  {data.config.login.maxRequests} / {formatDuration(data.config.login.windowMs)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-surface-500">Block Duration</span>
-                <span className="font-mono font-bold text-red-600 dark:text-red-400">
-                  {formatDuration(data.config.login.blockDurationMs)}
-                </span>
-              </div>
-            </div>
+
+          {/* Save Button */}
+          <div className="mt-6 flex items-center justify-between pt-4 border-t border-surface-200 dark:border-surface-700">
+            <p className="text-xs text-surface-400">
+              ⚠️ การตั้งค่าจะมีผลทันที แต่จะรีเซ็ตเมื่อ restart server
+            </p>
+            <button
+              onClick={handleSaveConfig}
+              disabled={isSaving}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium text-white
+                         bg-gradient-to-r from-primary-600 to-primary-700
+                         hover:from-primary-700 hover:to-primary-800
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         shadow-lg shadow-primary-500/25 transition-all duration-200 cursor-pointer"
+            >
+              <Save size={16} />
+              {isSaving ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่า'}
+            </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

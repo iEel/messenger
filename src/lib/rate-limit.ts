@@ -25,15 +25,15 @@ interface RateLimitStats {
   remainingMs: number;
 }
 
-// ★ Default config
-const DEFAULT_CONFIG: RateLimitConfig = {
+// ★ Default config (mutable for admin changes)
+let generalConfig: RateLimitConfig = {
   windowMs: 60 * 1000,        // 1 นาที
   maxRequests: 60,             // 60 requests/นาที
   blockDurationMs: 5 * 60 * 1000, // บล็อก 5 นาที
 };
 
 // ★ Login-specific config (เข้มงวดกว่า)
-const LOGIN_CONFIG: RateLimitConfig = {
+let loginConfig: RateLimitConfig = {
   windowMs: 60 * 1000,        // 1 นาที
   maxRequests: 5,              // 5 ครั้ง/นาที
   blockDurationMs: 15 * 60 * 1000, // บล็อก 15 นาที
@@ -49,8 +49,8 @@ setInterval(() => {
   [generalStore, loginStore].forEach(store => {
     for (const [key, entry] of store) {
       const maxAge = entry.blocked
-        ? (entry.blockedAt || now) + DEFAULT_CONFIG.blockDurationMs
-        : entry.firstRequest + DEFAULT_CONFIG.windowMs;
+        ? (entry.blockedAt || now) + generalConfig.blockDurationMs
+        : entry.firstRequest + generalConfig.windowMs;
       if (now > maxAge + 60000) {
         store.delete(key);
       }
@@ -67,7 +67,7 @@ export function checkRateLimit(
   type: 'general' | 'login' = 'general'
 ): { allowed: boolean; remaining: number; retryAfterMs: number } {
   const store = type === 'login' ? loginStore : generalStore;
-  const config = type === 'login' ? LOGIN_CONFIG : DEFAULT_CONFIG;
+  const config = type === 'login' ? loginConfig : generalConfig;
   const now = Date.now();
 
   let entry = store.get(ip);
@@ -144,8 +144,8 @@ export function getRateLimitStats(): { general: RateLimitStats[]; login: RateLim
   };
 
   return {
-    general: mapStats(generalStore, DEFAULT_CONFIG),
-    login: mapStats(loginStore, LOGIN_CONFIG),
+    general: mapStats(generalStore, generalConfig),
+    login: mapStats(loginStore, loginConfig),
   };
 }
 
@@ -168,7 +168,23 @@ export function unblockIp(ip: string): boolean {
  */
 export function getRateLimitConfig() {
   return {
-    general: { ...DEFAULT_CONFIG },
-    login: { ...LOGIN_CONFIG },
+    general: { ...generalConfig },
+    login: { ...loginConfig },
   };
+}
+
+/**
+ * ★ อัปเดต config (Admin action)
+ */
+export function updateRateLimitConfig(updates: {
+  general?: Partial<RateLimitConfig>;
+  login?: Partial<RateLimitConfig>;
+}) {
+  if (updates.general) {
+    generalConfig = { ...generalConfig, ...updates.general };
+  }
+  if (updates.login) {
+    loginConfig = { ...loginConfig, ...updates.login };
+  }
+  return getRateLimitConfig();
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getRateLimitStats, unblockIp, getRateLimitConfig } from '@/lib/rate-limit';
+import { getRateLimitStats, unblockIp, getRateLimitConfig, updateRateLimitConfig } from '@/lib/rate-limit';
 
 // GET — ดึงสถิติ Rate Limit (admin only)
 export async function GET() {
@@ -40,6 +40,38 @@ export async function DELETE(request: NextRequest) {
     });
   } catch (error) {
     console.error('DELETE /api/rate-limit error:', error);
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาด' }, { status: 500 });
+  }
+}
+
+// PUT — อัปเดต config (admin only)
+export async function PUT(request: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const updates: { general?: Record<string, number>; login?: Record<string, number> } = {};
+
+    if (body.general) {
+      updates.general = {};
+      if (body.general.maxRequests) updates.general.maxRequests = Number(body.general.maxRequests);
+      if (body.general.windowMs) updates.general.windowMs = Number(body.general.windowMs);
+      if (body.general.blockDurationMs) updates.general.blockDurationMs = Number(body.general.blockDurationMs);
+    }
+    if (body.login) {
+      updates.login = {};
+      if (body.login.maxRequests) updates.login.maxRequests = Number(body.login.maxRequests);
+      if (body.login.windowMs) updates.login.windowMs = Number(body.login.windowMs);
+      if (body.login.blockDurationMs) updates.login.blockDurationMs = Number(body.login.blockDurationMs);
+    }
+
+    const newConfig = updateRateLimitConfig(updates);
+    return NextResponse.json({ success: true, config: newConfig });
+  } catch (error) {
+    console.error('PUT /api/rate-limit error:', error);
     return NextResponse.json({ error: 'เกิดข้อผิดพลาด' }, { status: 500 });
   }
 }

@@ -497,6 +497,10 @@ cancelled                         issue → return / reschedule
   - modal ส่ง `Promise.all` จ่ายทุกใบพร้อมกัน
 - ★ **Reassign Messenger** — เปลี่ยนแมสเซ็นเจอร์ (เฉพาะสถานะ `assigned`) ด้วย dropdown "🔄 เปลี่ยน"
 - ★ **Unassign (ดึงงานกลับ)** — ดึงใบงานกลับจาก `assigned` → `new` + ปลด AssignedTo
+- ★ **Toast Notification System** — แทน `window.alert/confirm` ด้วย UI สวย
+  - `src/components/toast.tsx` — Toast (success/error/warning/info) + Confirm Dialog
+  - `useToast()` hook ใช้ได้ทุกหน้า (ToastProvider ครอบ layout)
+  - หน้าจ่ายงานเปลี่ยนหมดแล้ว: จ่ายงาน, ดึงกลับ, ยกเลิก → Toast + Premium Confirm
 
 ---
 

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
 import { formatDateTimeShort } from '@/lib/date-utils';
+import { useToast } from '@/components/toast';
 
 interface TaskItem {
   Id: number;
@@ -59,6 +60,7 @@ interface Messenger {
 }
 
 export default function DispatcherPage() {
+  const { toast, confirm } = useToast();
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [messengers, setMessengers] = useState<Messenger[]>([]);
   const [total, setTotal] = useState(0);
@@ -216,6 +218,7 @@ export default function DispatcherPage() {
       setSelectedTasks(new Set());
       setBulkMode(false);
       fetchTasks();
+      toast.success('จ่ายงานสำเร็จ', `จ่าย ${taskIds.length} ใบงานให้ ${messengerName}`);
     } finally {
       setAssigning(false);
     }
@@ -236,6 +239,7 @@ export default function DispatcherPage() {
         }),
       });
       fetchTasks();
+      toast.success('จ่ายงานสำเร็จ', `จ่ายงานให้ ${messengerName}`);
     } finally {
       setQuickAssigning(null);
     }
@@ -262,8 +266,13 @@ export default function DispatcherPage() {
 
   // ★ ดึงงานกลับ (assigned → new)
   const handleUnassign = async (task: TaskItem) => {
-    const confirmed = window.confirm(`ดึงงาน ${task.TaskNumber} กลับเป็น "รอจ่ายงาน"?\nแมสเซ็นเจอร์: ${task.MessengerName}`);
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: 'ดึงงานกลับ',
+      message: `ดึงงาน ${task.TaskNumber} กลับเป็น "รอจ่ายงาน"?\nแมสเซ็นเจอร์: ${task.MessengerName}`,
+      confirmText: 'ดึงกลับ',
+      type: 'warning',
+    });
+    if (!ok) return;
     try {
       await fetch(`/api/tasks/${task.Id}`, {
         method: 'PATCH',
@@ -275,22 +284,32 @@ export default function DispatcherPage() {
         }),
       });
       fetchTasks();
+      toast.success('ดึงงานกลับแล้ว', `${task.TaskNumber} กลับเป็นรอจ่ายงาน`);
     } catch (error) {
       console.error('Unassign error:', error);
+      toast.error('เกิดข้อผิดพลาด', 'ไม่สามารถดึงงานกลับได้');
     }
   };
 
   // ★ ยกเลิกใบงาน
   const handleCancelTask = async (task: TaskItem) => {
-    const confirmed = window.confirm(`ยืนยันยกเลิกใบงาน ${task.TaskNumber}?\nเอกสาร: ${task.DocumentDesc}\nผู้รับ: ${task.RecipientName}`);
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: 'ยกเลิกใบงาน',
+      message: `ยืนยันยกเลิกใบงาน ${task.TaskNumber}?\nเอกสาร: ${task.DocumentDesc}\nผู้รับ: ${task.RecipientName}`,
+      confirmText: 'ยกเลิก',
+      type: 'danger',
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/tasks/${task.Id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'cancelled', notes: 'ยกเลิกโดยหัวหน้าแมสเซ็นเจอร์' }),
       });
-      if (res.ok) fetchTasks();
+      if (res.ok) {
+        fetchTasks();
+        toast.success('ยกเลิกแล้ว', `${task.TaskNumber} ถูกยกเลิกแล้ว`);
+      }
     } catch (error) {
       console.error('Cancel error:', error);
     }

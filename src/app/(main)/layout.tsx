@@ -1,6 +1,7 @@
 'use client';
 
 import Sidebar from '@/components/layout/Sidebar';
+import { ToastProvider } from '@/components/toast';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 
@@ -23,13 +24,15 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-900 transition-colors duration-300">
-      <Sidebar />
-      <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
-        <div className="p-4 sm:p-6 lg:p-8">
-          {children}
-        </div>
-      </main>
-    </div>
+    <ToastProvider>
+      <div className="min-h-screen bg-surface-50 dark:bg-surface-900 transition-colors duration-300">
+        <Sidebar />
+        <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
+          <div className="p-4 sm:p-6 lg:p-8">
+            {children}
+          </div>
+        </main>
+      </div>
+    </ToastProvider>
   );
 }

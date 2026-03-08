@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import type { Task, TaskStatusHistoryEntry } from '@/lib/types';
 import { sendMail, emailTaskAssigned, emailIssueAlert, emailTaskCompleted } from '@/lib/email';
+import { notifyTaskAssigned } from '@/lib/push';
 
 // GET - ดึงรายละเอียด Task
 export async function GET(
@@ -123,6 +124,19 @@ export async function PATCH(
       sendEmailNotification(parseInt(id), status, notes).catch(err =>
         console.error('[Email] Background send failed:', err)
       );
+    }
+
+    // ★ Push notification เมื่อจ่ายงานให้แมส
+    if (status === 'assigned' && assignedTo) {
+      // Get task info for notification
+      const taskInfo = await query<{ TaskNumber: string; DocumentDesc: string; RecipientName: string }[]>(
+        'SELECT TaskNumber, DocumentDesc, RecipientName FROM Tasks WHERE Id = @id',
+        { id: parseInt(id) }
+      );
+      if (taskInfo[0]) {
+        notifyTaskAssigned(assignedTo, taskInfo[0].TaskNumber, taskInfo[0].DocumentDesc, taskInfo[0].RecipientName)
+          .catch(err => console.error('[Push] Send failed:', err));
+      }
     }
 
     return NextResponse.json({ message: 'อัปเดตสำเร็จ' });

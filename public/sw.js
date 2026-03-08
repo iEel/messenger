@@ -115,3 +115,40 @@ function getAllFromStore(store) {
     request.onerror = () => resolve([]);
   });
 }
+
+// ★ Push Notification
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'งานใหม่!';
+  const options = {
+    body: data.body || 'คุณได้รับงานใหม่',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    vibrate: [200, 100, 200],
+    tag: data.tag || 'task-notification',
+    renotify: true,
+    data: {
+      url: data.url || '/messenger',
+    },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// ★ Click notification → open page
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/messenger';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Focus existing window if open
+      for (const client of windowClients) {
+        if ('focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      // Open new window
+      return clients.openWindow(url);
+    })
+  );
+});

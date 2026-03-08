@@ -2,6 +2,7 @@
 
 import Sidebar from '@/components/layout/Sidebar';
 import { ToastProvider } from '@/components/toast';
+import { PushSubscribe } from '@/components/push-subscribe';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 
@@ -25,6 +26,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <ToastProvider>
+      <PushSubscribe />
       <div className="min-h-screen bg-surface-50 dark:bg-surface-900 transition-colors duration-300">
         <Sidebar />
         <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">

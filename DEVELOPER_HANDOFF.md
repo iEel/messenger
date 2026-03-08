@@ -509,6 +509,9 @@ cancelled                         issue → return / reschedule
   - `src/components/push-subscribe.tsx` — Auto-subscribe เมื่อ login
   - Trigger: task PATCH → status `assigned` → ส่ง push ถึงแมสทันที
   - ⚠️ ต้อง deploy บน **HTTPS** ถึงจะทำงาน (localhost ทดสอบได้บางส่วน)
+- ★ **Pull-to-Refresh** — ดึงลงเพื่อรีเฟรชข้อมูล (มือถือ)
+  - `src/components/pull-to-refresh.tsx` — Reusable component พร้อม rubber-band effect
+  - ใช้ในหน้าแมสเซ็นเจอร์ + หน้าจ่ายงาน
 
 ---
 

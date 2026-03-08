@@ -141,32 +141,30 @@ export async function ldapAuthenticate(username: string, password: string): Prom
       };
     }
 
-    const entry = entries[0];
-    const getAttr = (name: string): string => {
-      const attr = entry.ppiA?.find((a: { type: string }) => a.type.toLowerCase() === name.toLowerCase());
-      return attr?.values?.[0]?.toString() || '';
-    };
+    const entry = entries[0] as unknown as Record<string, unknown>;
 
-    // Try different ways to get attributes from ldapjs entry
+    // Extract attributes from ldapjs SearchEntry (cast to any for internal access)
     const attrs: Record<string, string> = {};
-    if (entry.ppiA) {
-      for (const a of entry.ppiA as { type: string; values: string[] }[]) {
-        attrs[a.type.toLowerCase()] = a.values?.[0]?.toString() || '';
-      }
-    } else if ((entry as Record<string, unknown>).attributes) {
-      for (const a of (entry as Record<string, unknown>).attributes as { type: string; values: string[] }[]) {
-        attrs[a.type.toLowerCase()] = a.values?.[0]?.toString() || '';
+
+    // Method 1: entry.attributes (ldapjs v3)
+    const rawAttrs = (entry.attributes || entry.ppiA || []) as { type: string; values: string[] }[];
+    if (Array.isArray(rawAttrs)) {
+      for (const a of rawAttrs) {
+        if (a.type && a.values?.[0] != null) {
+          attrs[a.type.toLowerCase()] = String(a.values[0]);
+        }
       }
     }
-    // Also try object property access
-    const obj = entry.ppiB || (entry as Record<string, unknown>).object || {};
-    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+
+    // Method 2: entry.object (ldapjs v2 compat)
+    const obj = (entry.object || entry.ppiB || {}) as Record<string, unknown>;
+    for (const [k, v] of Object.entries(obj)) {
       if (!attrs[k.toLowerCase()] && v) {
         attrs[k.toLowerCase()] = String(v);
       }
     }
 
-    const dn = attrs['distinguishedname'] || getAttr('distinguishedName') || '';
+    const dn = attrs['distinguishedname'] || '';
     const { department, branch } = parseDN(dn);
 
     return {

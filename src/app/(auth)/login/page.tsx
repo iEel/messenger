@@ -41,7 +41,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError('รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง');
+        setError('ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
       } else {
         router.push('/dashboard');
         router.refresh();
@@ -147,7 +147,7 @@ export default function LoginPage() {
                 เข้าสู่ระบบ
               </h2>
               <p className="mt-2 text-surface-500 dark:text-surface-400 text-sm">
-                กรอกรหัสพนักงานและรหัสผ่านเพื่อเข้าใช้งาน
+                กรอกชื่อผู้ใช้งานและรหัสผ่านเพื่อเข้าใช้งาน
               </p>
             </div>
 
@@ -164,7 +164,7 @@ export default function LoginPage() {
               {/* Employee ID */}
               <div>
                 <label htmlFor="employeeId" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
-                  รหัสพนักงาน
+                  ชื่อผู้ใช้งาน (Username)
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -175,7 +175,7 @@ export default function LoginPage() {
                     type="text"
                     value={employeeId}
                     onChange={(e) => setEmployeeId(e.target.value)}
-                    placeholder="กรอกรหัสพนักงาน"
+                    placeholder="กรอกชื่อผู้ใช้งาน"
                     required
                     className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-surface-200 dark:border-surface-700
                                bg-white dark:bg-surface-800 text-surface-800 dark:text-white
@@ -249,7 +249,10 @@ export default function LoginPage() {
           </div>
 
           {/* Bottom Info */}
-          <p className="mt-8 text-center text-xs text-surface-400 dark:text-surface-500">
+          <p className="mt-6 text-center text-xs text-primary-500 dark:text-primary-400">
+            พนักงาน Sonic Group ใช้ AD Account ได้ (ติดต่อ admin เพื่อเปิดสิทธิ์)
+          </p>
+          <p className="mt-3 text-center text-xs text-surface-400 dark:text-surface-500">
             ระบบบริหารจัดการแมสเซ็นเจอร์และติดตามเอกสาร v1.0
           </p>
         </div>

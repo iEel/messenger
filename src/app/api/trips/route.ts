@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { logAudit } from '@/lib/audit';
 
 // GET - ดึง Trip ปัจจุบันหรือประวัติ
 export async function GET(request: NextRequest) {
@@ -63,6 +64,9 @@ export async function POST(request: NextRequest) {
        VALUES (@userId, GETDATE(), 'active', @notes)`,
       { userId: parseInt(session.user.id), notes: body.notes || null }
     );
+
+    // ★ Audit log
+    logAudit({ action: 'trip_started', userId: parseInt(session.user.id), targetType: 'trip', targetId: result[0].Id, details: 'เริ่มรอบวิ่ง' });
 
     return NextResponse.json(
       { message: 'เริ่มรอบวิ่งแล้ว', tripId: result[0].Id },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { logAudit } from '@/lib/audit';
 
 // GET - ดึงค่า settings ทั้งหมด
 export async function GET() {
@@ -67,6 +68,10 @@ export async function PATCH(request: NextRequest) {
         { key: s.key, value: s.value }
       );
     }
+
+    // ★ Audit log
+    const changedKeys = settings.map(s => s.key).join(', ');
+    logAudit({ action: 'settings_updated', userId: parseInt(session.user.id), details: `แก้ไขตั้งค่า: ${changedKeys}` });
 
     return NextResponse.json({ message: 'บันทึกสำเร็จ' });
   } catch (error) {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { query, sql } from '@/lib/db';
 import type { User } from '@/lib/types';
+import { auth } from '@/lib/auth';
+import { logAudit } from '@/lib/audit';
 
 // GET - ดึงรายชื่อ User ทั้งหมด
 export async function GET(request: NextRequest) {
@@ -88,6 +90,12 @@ export async function POST(request: NextRequest) {
        VALUES (@employeeId, @fullName, @email, @phone, @passwordHash, @role, @department)`,
       { employeeId, fullName, email: email || null, phone: phone || null, passwordHash, role, department: department || null }
     );
+
+    // ★ Audit log
+    const session = await auth();
+    if (session?.user) {
+      logAudit({ action: 'user_created', userId: parseInt(session.user.id), targetType: 'user', targetId: result[0].Id, details: `สร้างผู้ใช้: ${fullName} (${employeeId}) - ${role}` });
+    }
 
     return NextResponse.json(
       { message: 'สร้างผู้ใช้สำเร็จ', userId: result[0].Id },

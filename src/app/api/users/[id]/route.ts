@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { query } from '@/lib/db';
 import type { User } from '@/lib/types';
+import { auth } from '@/lib/auth';
+import { logAudit } from '@/lib/audit';
 
 // GET - ดึงข้อมูล User ตาม ID
 export async function GET(
@@ -64,6 +66,13 @@ export async function PATCH(
       sqlParams
     );
 
+    // ★ Audit log
+    const session = await auth();
+    const changes = Object.keys(body).filter(k => k !== 'password').join(', ');
+    if (session?.user) {
+      logAudit({ action: 'user_updated', userId: parseInt(session.user.id), targetType: 'user', targetId: parseInt(id), details: `แก้ไข: ${changes}` });
+    }
+
     return NextResponse.json({ message: 'แก้ไขผู้ใช้สำเร็จ' });
   } catch (error) {
     console.error('PATCH /api/users/[id] error:', error);
@@ -82,6 +91,12 @@ export async function DELETE(
       'UPDATE Users SET IsActive = 0, UpdatedAt = GETDATE() WHERE Id = @id',
       { id: parseInt(id) }
     );
+
+    // ★ Audit log
+    const session = await auth();
+    if (session?.user) {
+      logAudit({ action: 'user_updated', userId: parseInt(session.user.id), targetType: 'user', targetId: parseInt(id), details: 'ปิดการใช้งานผู้ใช้' });
+    }
 
     return NextResponse.json({ message: 'ปิดการใช้งานผู้ใช้สำเร็จ' });
   } catch (error) {

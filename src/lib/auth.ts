@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { query } from './db';
 import type { User } from './types';
+import { logAudit } from './audit';
 
 declare module 'next-auth' {
   interface Session {
@@ -70,6 +71,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           'UPDATE Users SET LastLoginAt = GETDATE() WHERE Id = @id',
           { id: user.Id }
         );
+
+        // ★ Audit: login
+        logAudit({ action: 'user_login', userId: user.Id, details: `${user.FullName} (${user.EmployeeId}) เข้าสู่ระบบ` });
 
         return {
           id: String(user.Id),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { haversineDistance } from '@/lib/distance';
+import { logAudit } from '@/lib/audit';
 
 // PATCH - จบรอบวิ่ง + Loop Closing (คำนวณระยะทางกลับ)
 export async function PATCH(
@@ -94,6 +95,9 @@ export async function PATCH(
         notes: body.notes || null,
       }
     );
+
+    // ★ Audit log
+    logAudit({ action: 'trip_ended', userId, targetType: 'trip', targetId: tripId, details: `จบรอบวิ่ง — ${totalDistanceKm ? totalDistanceKm.toFixed(1) + ' km' : 'ไม่มีระยะทาง'}` });
 
     return NextResponse.json({
       message: 'ปิดรอบวิ่งแล้ว',

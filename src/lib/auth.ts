@@ -112,11 +112,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const result = await query<{ Id: number }[]>(
             `INSERT INTO Users (EmployeeId, FullName, Email, Phone, PasswordHash, Role, Department, IsActive)
              OUTPUT INSERTED.Id
-             VALUES (@employeeId, @fullName, @email, NULL, NULL, 'requester', @department, 1)`,
+             VALUES (@employeeId, @fullName, @email, NULL, @passwordHash, 'requester', @department, 1)`,
             {
               employeeId: ldapUser.employeeID || username,
               fullName: ldapUser.cn,
               email: ldapUser.mail || '',
+              passwordHash: 'AD_USER_NO_LOCAL_PASSWORD',
               department: ldapUser.department || null,
             }
           );

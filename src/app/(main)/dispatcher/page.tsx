@@ -22,6 +22,8 @@ import {
   List,
   Navigation,
   Route,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
 import { formatDateTimeShort } from '@/lib/date-utils';
@@ -67,6 +69,10 @@ export default function DispatcherPage() {
   const [assignModal, setAssignModal] = useState<TaskItem | null>(null);
   const [selectedMessenger, setSelectedMessenger] = useState<number | null>(null);
   const [assigning, setAssigning] = useState(false);
+  // ★ Bulk assign
+  const [selectedTasks, setSelectedTasks] = useState<Set<number>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  const [quickAssigning, setQuickAssigning] = useState<number | null>(null);
   const [groupByZone, setGroupByZone] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('dispatcher_groupByZone') === 'true';
@@ -191,22 +197,67 @@ export default function DispatcherPage() {
     if (!assignModal || !selectedMessenger) return;
     setAssigning(true);
     try {
-      const res = await fetch(`/api/tasks/${assignModal.Id}`, {
+      const taskIds = assignModal.Id === -1 ? Array.from(selectedTasks) : [assignModal.Id];
+      const messengerName = messengers.find(m => m.Id === selectedMessenger)?.FullName;
+      
+      await Promise.all(taskIds.map(id =>
+        fetch(`/api/tasks/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assignedTo: selectedMessenger,
+            status: 'assigned',
+            notes: `จ่ายงานให้ ${messengerName}`,
+          }),
+        })
+      ));
+      setAssignModal(null);
+      setSelectedMessenger(null);
+      setSelectedTasks(new Set());
+      setBulkMode(false);
+      fetchTasks();
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  // ★ Quick Assign — เลือกจาก dropdown บน card
+  const handleQuickAssign = async (taskId: number, messengerId: number) => {
+    setQuickAssigning(taskId);
+    try {
+      const messengerName = messengers.find(m => m.Id === messengerId)?.FullName;
+      await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          assignedTo: selectedMessenger,
+          assignedTo: messengerId,
           status: 'assigned',
-          notes: `จ่ายงานให้ ${messengers.find(m => m.Id === selectedMessenger)?.FullName}`,
+          notes: `จ่ายงานให้ ${messengerName}`,
         }),
       });
-      if (res.ok) {
-        setAssignModal(null);
-        setSelectedMessenger(null);
-        fetchTasks();
-      }
+      fetchTasks();
     } finally {
-      setAssigning(false);
+      setQuickAssigning(null);
+    }
+  };
+
+  // ★ Toggle task selection
+  const toggleTaskSelection = (taskId: number) => {
+    setSelectedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
+
+  const selectAllNewTasks = () => {
+    const newTaskIds = tasks.filter(t => t.Status === 'new').map(t => t.Id);
+    if (newTaskIds.every(id => selectedTasks.has(id))) {
+      // deselect all
+      setSelectedTasks(new Set());
+    } else {
+      setSelectedTasks(new Set(newTaskIds));
     }
   };
 
@@ -253,32 +304,43 @@ export default function DispatcherPage() {
   // Render a single task card
   const renderTaskCard = (task: TaskItem) => {
     const statusConf = STATUS_CONFIG[task.Status];
+    const isSelected = selectedTasks.has(task.Id);
+    const isQuickAssigning = quickAssigning === task.Id;
     return (
       <div key={task.Id}
-        className={`bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
+        className={`bg-white dark:bg-surface-800 rounded-2xl border-2 transition-all duration-200 overflow-hidden
                     shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
-                    transition-all duration-200 overflow-hidden
+                    ${isSelected ? 'border-primary-500 ring-2 ring-primary-200 dark:ring-primary-800' : 'border-surface-200 dark:border-surface-700'}
                     ${task.Status === 'issue' ? 'issue-flash border-red-300 dark:border-red-700' : ''}`}>
         <div className="h-1.5" style={{ backgroundColor: statusConf?.color }} />
         <div className="p-4">
           <div className="flex items-start justify-between mb-3">
-            <div>
-              <span className="font-bold text-sm font-mono text-surface-800 dark:text-white">{task.TaskNumber}</span>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
-                  style={{ backgroundColor: statusConf?.bgColor, color: statusConf?.color }}>
-                  {statusConf?.icon} {statusConf?.labelTh}
-                </span>
-                {task.Priority === 'urgent' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700">
-                    <AlertTriangle size={10} /> ด่วน
+            <div className="flex items-start gap-2">
+              {/* ★ Checkbox สำหรับ Bulk Assign */}
+              {task.Status === 'new' && (
+                <button onClick={() => { if (!bulkMode) setBulkMode(true); toggleTaskSelection(task.Id); }}
+                  className="mt-0.5 shrink-0 cursor-pointer text-surface-400 hover:text-primary-500 transition-colors">
+                  {isSelected ? <CheckSquare size={18} className="text-primary-500" /> : <Square size={18} />}
+                </button>
+              )}
+              <div>
+                <span className="font-bold text-sm font-mono text-surface-800 dark:text-white">{task.TaskNumber}</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
+                    style={{ backgroundColor: statusConf?.bgColor, color: statusConf?.color }}>
+                    {statusConf?.icon} {statusConf?.labelTh}
                   </span>
-                )}
-                {task.TaskType === 'roundtrip' && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
-                    <ArrowRightLeft size={10} />
-                  </span>
-                )}
+                  {task.Priority === 'urgent' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-red-100 text-red-700">
+                      <AlertTriangle size={10} /> ด่วน
+                    </span>
+                  )}
+                  {task.TaskType === 'roundtrip' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-purple-100 text-purple-700">
+                      <ArrowRightLeft size={10} />
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -332,12 +394,26 @@ export default function DispatcherPage() {
                 🏍️ <span className="font-medium text-surface-700 dark:text-surface-300">{task.MessengerName}</span>
               </p>
             ) : task.Status === 'new' ? (
-              <button onClick={() => { setAssignModal(task); setSelectedMessenger(null); }}
-                className="w-full py-2 rounded-lg text-xs font-semibold text-primary-600 dark:text-primary-400
-                           bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100
-                           transition-colors cursor-pointer flex items-center justify-center gap-1.5">
-                <UserCheck size={14} /> จ่ายงาน
-              </button>
+              /* ★ Quick Assign Dropdown */
+              <div className="relative">
+                {isQuickAssigning ? (
+                  <div className="w-full py-2 flex items-center justify-center"><Loader2 size={16} className="animate-spin text-primary-500" /></div>
+                ) : (
+                  <select
+                    defaultValue=""
+                    onChange={(e) => { if (e.target.value) handleQuickAssign(task.Id, parseInt(e.target.value)); }}
+                    className="w-full py-2 px-3 rounded-lg text-xs font-semibold text-primary-600 dark:text-primary-400
+                               bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100
+                               border border-primary-200 dark:border-primary-800
+                               transition-colors cursor-pointer appearance-none
+                               focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    <option value="" disabled>🏍️ เลือกแมสเซ็นเจอร์...</option>
+                    {messengers.map(m => (
+                      <option key={m.Id} value={m.Id}>{m.FullName} ({m.EmployeeId})</option>
+                    ))}
+                  </select>
+                )}
+              </div>
             ) : (
               <p className="text-xs text-surface-400">ยังไม่มีแมสเซ็นเจอร์</p>
             )}
@@ -378,7 +454,20 @@ export default function DispatcherPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Select All */}
+          {tasks.some(t => t.Status === 'new') && (
+            <button onClick={selectAllNewTasks}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
+                           border transition-all cursor-pointer
+                           ${selectedTasks.size > 0
+                             ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 text-primary-600 dark:text-primary-400'
+                             : 'border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800'
+                           }`}>
+              <CheckSquare size={16} />
+              {selectedTasks.size > 0 ? `เลือก ${selectedTasks.size} ใบ` : 'เลือกทั้งหมด'}
+            </button>
+          )}
           {/* Zone Toggle */}
           <button onClick={() => { const next = !groupByZone; setGroupByZone(next); localStorage.setItem('dispatcher_groupByZone', String(next)); }}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
@@ -495,7 +584,32 @@ export default function DispatcherPage() {
         </div>
       )}
 
-      {/* Assign Modal */}
+      {/* ★ Floating Bulk Assign Bar */}
+      {selectedTasks.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40
+                        bg-white dark:bg-surface-800 rounded-2xl shadow-2xl border border-surface-200 dark:border-surface-700
+                        px-6 py-3 flex items-center gap-4 animate-fade-in">
+          <p className="text-sm font-bold text-surface-800 dark:text-white">
+            ✅ เลือก {selectedTasks.size} ใบงาน
+          </p>
+          <button
+            onClick={() => { setAssignModal({ Id: -1 } as TaskItem); setSelectedMessenger(null); }}
+            className="px-5 py-2 rounded-xl text-sm font-semibold text-white
+                       bg-gradient-to-r from-primary-600 to-primary-700
+                       hover:from-primary-700 hover:to-primary-800
+                       shadow-lg shadow-primary-500/25 transition-all cursor-pointer
+                       flex items-center gap-2">
+            <UserCheck size={16} /> จ่ายงานทั้งหมด
+          </button>
+          <button
+            onClick={() => { setSelectedTasks(new Set()); setBulkMode(false); }}
+            className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 cursor-pointer">
+            <X size={16} className="text-surface-400" />
+          </button>
+        </div>
+      )}
+
+      {/* Assign Modal (single + bulk) */}
       {assignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setAssignModal(null)} />
@@ -505,9 +619,13 @@ export default function DispatcherPage() {
               <X size={18} className="text-surface-400" />
             </button>
 
-            <h3 className="text-lg font-bold text-surface-800 dark:text-white mb-1">จ่ายงาน</h3>
+            <h3 className="text-lg font-bold text-surface-800 dark:text-white mb-1">
+              {assignModal.Id === -1 ? `จ่ายงาน ${selectedTasks.size} ใบ` : 'จ่ายงาน'}
+            </h3>
             <p className="text-sm text-surface-500 mb-4">
-              {assignModal.TaskNumber} → {assignModal.RecipientName}
+              {assignModal.Id === -1
+                ? `เลือก ${selectedTasks.size} ใบงานที่จะจ่ายพร้อมกัน`
+                : `${assignModal.TaskNumber} → ${assignModal.RecipientName}`}
             </p>
 
             <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -550,7 +668,7 @@ export default function DispatcherPage() {
                            shadow-lg shadow-primary-500/25 transition-all cursor-pointer
                            flex items-center justify-center gap-2">
                 {assigning ? <Loader2 size={16} className="animate-spin" /> : <UserCheck size={16} />}
-                จ่ายงาน
+                {assignModal.Id === -1 ? `จ่าย ${selectedTasks.size} ใบ` : 'จ่ายงาน'}
               </button>
             </div>
           </div>

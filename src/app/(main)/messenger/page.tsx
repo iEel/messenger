@@ -344,7 +344,7 @@ export default function MessengerPage() {
 
     // จุดแรก = จุดหมาย, จุดท้ายสุด = ปลายทาง, จุดกลาง = waypoints
     if (withCoords.length === 1) {
-      return `https://www.google.com/maps/dir/?api=1&destination=${withCoords[0].Latitude},${withCoords[0].Longitude}&travelmode=driving`;
+      return `https://www.google.com/maps/dir/?api=1&destination=${withCoords[0].Latitude},${withCoords[0].Longitude}&travelmode=two_wheeler`;
     }
 
     const lastTask = withCoords[withCoords.length - 1];
@@ -354,7 +354,7 @@ export default function MessengerPage() {
       .map(t => `${t.Latitude},${t.Longitude}`)
       .join('|');
 
-    return `https://www.google.com/maps/dir/?api=1&destination=${lastTask.Latitude},${lastTask.Longitude}&waypoints=${waypointStr}&travelmode=driving`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${lastTask.Latitude},${lastTask.Longitude}&waypoints=${waypointStr}&travelmode=two_wheeler`;
   };
 
   const getNextAction = (status: TaskStatus, taskType?: string) => {
@@ -608,7 +608,7 @@ export default function MessengerPage() {
                     <div className="flex gap-2 mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">
                       {/* Navigate */}
                       {task.Latitude && task.Longitude && (
-                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=driving`}
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${task.Latitude},${task.Longitude}&travelmode=two_wheeler`}
                           target="_blank" rel="noopener noreferrer"
                           className="flex-1 py-2.5 rounded-xl text-xs font-medium text-center
                                      border border-surface-200 dark:border-surface-700

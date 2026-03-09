@@ -604,6 +604,12 @@ cancelled                         issue → return / reschedule
   - Requester/Admin: 📝 สร้างใบงานใหม่ + ✅ ติดตามงาน
   - Dispatcher/Admin: 🚚 กระดานจ่ายงาน
   - Admin เพิ่ม: 👥 จัดการผู้ใช้
+- ★ **Task Number Format Preview** — หน้า Settings > ใบงาน
+  - แสดงรูปแบบ: `PREFIX-YYYYMM-NNNN` + ตัวอย่าง real-time ตาม prefix
+- ★ **Messenger Task Detail Link** — หน้างานวิ่ง
+  - เลขที่ใบงาน กดลิงก์ /tasks/[id] ดูรายละเอียดงานได้
+  - เพิ่มปุ่ม 👁️ "รายละเอียด" ในแถว action ของแต่ละ card
+  - ปุ่มย้อนกลับ: messenger → /messenger, requester/admin → /tasks
 
 ---
 

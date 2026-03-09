@@ -307,6 +307,7 @@ export default function MessengerPage() {
   const [isDraggingTouch, setIsDraggingTouch] = useState(false);
 
   const handleTouchStart = (e: React.TouchEvent, index: number) => {
+    e.preventDefault(); // ★ ป้องกัน text selection บนมือถือ
     touchStartY.current = e.touches[0].clientY;
     // ⏱ Long-press: ต้องกดค้าง 400ms ก่อนเริ่ม drag
     longPressTimer.current = setTimeout(() => {
@@ -563,8 +564,9 @@ export default function MessengerPage() {
                           onTouchMove={(e) => handleTouchMove(e)}
                           onTouchEnd={handleTouchEnd}
                           className={`cursor-grab active:cursor-grabbing text-surface-300 dark:text-surface-600 
-                                      hover:text-surface-500 p-1 -m-1 rounded-lg
+                                      hover:text-surface-500 p-2 -m-1 rounded-lg select-none
                                       ${isDragging ? 'text-indigo-500 scale-110' : ''}`}
+                          style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', touchAction: 'none' }}
                         >
                           <GripVertical size={20} />
                         </div>

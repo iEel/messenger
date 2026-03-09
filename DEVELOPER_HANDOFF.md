@@ -566,6 +566,15 @@ cancelled                         issue → return / reschedule
     - Blocked IPs: รายชื่อ + ปุ่มปลดบล็อก
     - ตั้งค่า: แก้ maxRequests, window, blockDuration (General + Login)
     - Auto-refresh ทุก 10 วินาที
+- ★ **User Profile Edit** — ผู้ใช้ทุก role แก้ไขข้อมูลตัวเองได้
+  - `src/app/api/profile/route.ts` — GET ข้อมูลตัวเอง, PATCH แก้ไข
+  - `src/app/(main)/profile/page.tsx` — หน้าโปรไฟล์
+  - แก้ไขได้: ชื่อ-นามสกุล, อีเมล, เบอร์โทร
+  - เปลี่ยนรหัสผ่าน: ต้องกรอกรหัสปัจจุบัน + ยืนยันรหัสใหม่ (≥6 ตัว)
+  - AD User ไม่สามารถเปลี่ยนรหัสผ่านได้ (แจ้ง error)
+  - แผนก/Role เปลี่ยนได้โดย Admin เท่านั้น
+  - Sidebar: คลิกชื่อผู้ใช้ด้านล่าง → ไปหน้า `/profile`
+  - Audit log บันทึกทุกการแก้ไข
 
 ---
 

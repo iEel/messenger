@@ -17,6 +17,7 @@ import {
   Bike,
   Download,
   Calendar,
+  Fuel,
 } from 'lucide-react';
 
 interface TodayStats {
@@ -34,6 +35,11 @@ interface WorkloadItem {
 }
 
 interface TripStats {
+  totalTrips: number; totalDistanceKm: number; avgDurationMinutes: number;
+}
+
+interface MessengerDistanceItem {
+  MessengerId: number; FullName: string;
   totalTrips: number; totalDistanceKm: number; avgDurationMinutes: number;
 }
 
@@ -78,6 +84,8 @@ export default function AnalyticsPage() {
   const [workload, setWorkload] = useState<WorkloadItem[]>([]);
   const [tripStats, setTripStats] = useState<TripStats | null>(null);
   const [totalTasks, setTotalTasks] = useState(0);
+  const [messengerDistance, setMessengerDistance] = useState<MessengerDistanceItem[]>([]);
+  const [fuelRate, setFuelRate] = useState(2.5); // บาท/km default
   const [isLoading, setIsLoading] = useState(true);
 
   // ★ Date range state
@@ -99,6 +107,7 @@ export default function AnalyticsPage() {
       setTopMessengers(data.topMessengers || []);
       setWorkload(data.workload || []);
       setTripStats(data.tripStats || null);
+      setMessengerDistance(data.messengerDistance || []);
       setTotalTasks(data.totalTasks || 0);
     } catch (error) {
       console.error('Analytics fetch error:', error);
@@ -171,6 +180,17 @@ export default function AnalyticsPage() {
       csv += `สรุปรอบวิ่ง\n`;
       csv += `จำนวนรอบ,ระยะทางรวม (km),เวลาเฉลี่ย (นาที)\n`;
       csv += `${tripStats.totalTrips},${tripStats.totalDistanceKm},${tripStats.avgDurationMinutes}\n\n`;
+    }
+
+    // ระยะทางรายบุคคล (ค่าน้ำมัน)
+    if (messengerDistance.length > 0) {
+      csv += `ระยะทางแมสเซ็นเจอร์ (สำหรับค่าน้ำมัน)\n`;
+      csv += `ชื่อ,รอบวิ่ง,ระยะทาง (km),เวลาเฉลี่ย (นาที),ค่าน้ำมันประมาณ (บาท)\n`;
+      messengerDistance.forEach(m => {
+        const fuel = (m.totalDistanceKm * fuelRate).toFixed(0);
+        csv += `${m.FullName},${m.totalTrips},${m.totalDistanceKm.toFixed(1)},${m.avgDurationMinutes},${fuel}\n`;
+      });
+      csv += `\nอัตราค่าน้ำมัน,${fuelRate} บาท/km\n\n`;
     }
 
     // Top Messengers
@@ -342,6 +362,82 @@ export default function AnalyticsPage() {
               <p className="text-xs text-surface-500 mt-1">เฉลี่ย/รอบ</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ★ ระยะทางแยกรายบุคคล (ค่าน้ำมัน) */}
+      {messengerDistance.length > 0 && (
+        <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
+                         shadow-[var(--shadow-card)] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-surface-700 dark:text-surface-300 flex items-center gap-2">
+              <Fuel size={16} className="text-amber-500" /> ⛽ ระยะทางแมสเซ็นเจอร์ (สำหรับค่าน้ำมัน)
+            </h3>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-surface-500">อัตรา:</label>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                value={fuelRate}
+                onChange={(e) => setFuelRate(parseFloat(e.target.value) || 0)}
+                className="w-20 px-2 py-1 rounded-lg border border-surface-300 dark:border-surface-600
+                           bg-white dark:bg-surface-700 text-sm text-right text-surface-800 dark:text-white"
+              />
+              <span className="text-xs text-surface-500">บาท/km</span>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-surface-500 uppercase border-b border-surface-200 dark:border-surface-700">
+                  <th className="pb-2 pr-4">ชื่อ</th>
+                  <th className="pb-2 px-2 text-center">รอบวิ่ง</th>
+                  <th className="pb-2 px-2 text-center">ระยะทาง</th>
+                  <th className="pb-2 px-2 text-center">เวลาเฉลี่ย</th>
+                  <th className="pb-2 px-2 text-right">ค่าน้ำมัน (ประมาณ)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {messengerDistance.map((m) => {
+                  const fuelCost = m.totalDistanceKm * fuelRate;
+                  return (
+                    <tr key={m.MessengerId} className="border-b border-surface-100 dark:border-surface-800 hover:bg-surface-50 dark:hover:bg-surface-700/50">
+                      <td className="py-2.5 pr-4 font-medium text-surface-800 dark:text-white">{m.FullName}</td>
+                      <td className="py-2.5 px-2 text-center text-surface-600 dark:text-surface-300">{m.totalTrips}</td>
+                      <td className="py-2.5 px-2 text-center">
+                        <span className="font-bold text-emerald-600">{m.totalDistanceKm.toFixed(1)}</span>
+                        <span className="text-xs text-surface-400 ml-1">km</span>
+                      </td>
+                      <td className="py-2.5 px-2 text-center text-surface-600 dark:text-surface-300">
+                        {m.avgDurationMinutes > 0 ? `${m.avgDurationMinutes} นาที` : '-'}
+                      </td>
+                      <td className="py-2.5 px-2 text-right">
+                        <span className="font-bold text-amber-600">฿{fuelCost.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {/* Total row */}
+                <tr className="border-t-2 border-surface-300 dark:border-surface-600 font-bold">
+                  <td className="py-2.5 pr-4 text-surface-800 dark:text-white">รวมทั้งหมด</td>
+                  <td className="py-2.5 px-2 text-center text-surface-700 dark:text-surface-200">
+                    {messengerDistance.reduce((s, m) => s + m.totalTrips, 0)}
+                  </td>
+                  <td className="py-2.5 px-2 text-center text-emerald-700 dark:text-emerald-400">
+                    {messengerDistance.reduce((s, m) => s + m.totalDistanceKm, 0).toFixed(1)} km
+                  </td>
+                  <td className="py-2.5 px-2 text-center">-</td>
+                  <td className="py-2.5 px-2 text-right text-amber-700 dark:text-amber-400">
+                    ฿{(messengerDistance.reduce((s, m) => s + m.totalDistanceKm, 0) * fuelRate).toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="text-[10px] text-surface-400 mt-3">
+            * ระยะทางคำนวณจาก Haversine (เส้นตรง) — ระยะทางจริงอาจมากกว่า 10-30%
+          </p>
         </div>
       )}
 

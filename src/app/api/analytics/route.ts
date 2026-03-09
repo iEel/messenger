@@ -160,6 +160,26 @@ export async function GET(request: NextRequest) {
         AND Status = 'completed'
     `, tripParams);
 
+    // ★ ระยะทางแยกรายบุคคล (สำหรับคำนวณค่าน้ำมัน)
+    const messengerDistance = await query<{
+      MessengerId: number; FullName: string;
+      totalTrips: number; totalDistanceKm: number; avgDurationMinutes: number;
+    }[]>(`
+      SELECT 
+        tr.MessengerId,
+        u.FullName,
+        COUNT(*) AS totalTrips,
+        ISNULL(SUM(tr.TotalDistanceKm), 0) AS totalDistanceKm,
+        ISNULL(AVG(DATEDIFF(MINUTE, tr.StartTime, tr.EndTime)), 0) AS avgDurationMinutes
+      FROM Trips tr
+      JOIN Users u ON tr.MessengerId = u.Id
+      WHERE ${tripDateCondition}
+        AND tr.Status = 'completed'
+        AND tr.TotalDistanceKm IS NOT NULL
+      GROUP BY tr.MessengerId, u.FullName
+      ORDER BY totalDistanceKm DESC
+    `, tripParams);
+
     // จำนวน Tasks ทั้งหมด
     const totalParams: Record<string, unknown> = {};
     let totalWhere = '';
@@ -175,6 +195,7 @@ export async function GET(request: NextRequest) {
       topMessengers,
       workload,
       tripStats: tripStats[0] || { totalTrips: 0, totalDistanceKm: 0, avgDurationMinutes: 0 },
+      messengerDistance,
       totalTasks: totalAll[0]?.total || 0,
     });
   } catch (error) {

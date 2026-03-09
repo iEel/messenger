@@ -15,6 +15,9 @@ import {
   BarChart3,
   Bike,
   PlayCircle,
+  Route,
+  Target,
+  Flame,
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDateFull } from '@/lib/date-utils';
@@ -47,11 +50,26 @@ interface AnalyticsData {
   totalTasks: number;
 }
 
+interface MessengerStats {
+  month: string;
+  totalAssigned: number;
+  completed: number;
+  issue: number;
+  inProgress: number;
+  successRate: number;
+  totalTrips: number;
+  totalDistanceKm: number;
+  totalDurationMinutes: number;
+  todayCompleted: number;
+  todayTotal: number;
+}
+
 const THAI_DAY_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
 export default function DashboardPage() {
   const { data: session } = useSession();
   const [data, setData] = useState<AnalyticsData | null>(null);
+  const [messengerStats, setMessengerStats] = useState<MessengerStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const userRole = session?.user?.role || 'requester';
 
@@ -71,6 +89,18 @@ export default function DashboardPage() {
     };
     fetchAnalytics();
   }, []);
+
+  // ★ Fetch messenger personal stats
+  useEffect(() => {
+    if (userRole !== 'messenger') return;
+    const fetchMyStats = async () => {
+      try {
+        const res = await fetch('/api/messenger-stats');
+        if (res.ok) setMessengerStats(await res.json());
+      } catch { /* ignore */ }
+    };
+    fetchMyStats();
+  }, [userRole]);
 
   const today = data?.today || { total: 0, pending: 0, assigned: 0, in_transit: 0, completed: 0, issue: 0 };
 
@@ -133,6 +163,93 @@ export default function DashboardPage() {
                               opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ★ Messenger Personal Stats */}
+      {userRole === 'messenger' && messengerStats && (
+        <div className="bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
+                        shadow-[var(--shadow-card)] overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3 text-white">
+              <BarChart3 size={20} />
+              <h3 className="font-semibold text-sm">สถิติของฉัน — เดือนนี้</h3>
+            </div>
+            <span className="text-white/70 text-xs font-mono">{messengerStats.month}</span>
+          </div>
+
+          <div className="p-5 space-y-4">
+            {/* Row 1: Success Ring + Key Stats */}
+            <div className="flex items-center gap-5">
+              {/* Success Rate Ring */}
+              <div className="relative w-24 h-24 flex-shrink-0">
+                <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor"
+                    className="text-surface-100 dark:text-surface-700" strokeWidth="8" />
+                  <circle cx="50" cy="50" r="42" fill="none"
+                    stroke="url(#successGrad)" strokeWidth="8" strokeLinecap="round"
+                    strokeDasharray={`${messengerStats.successRate * 2.64} 264`} />
+                  <defs>
+                    <linearGradient id="successGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#10b981" />
+                      <stop offset="100%" stopColor="#06b6d4" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-surface-800 dark:text-white">{messengerStats.successRate}%</span>
+                  <span className="text-[9px] text-surface-400">สำเร็จ</span>
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="flex-1 grid grid-cols-2 gap-2.5">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{messengerStats.totalAssigned}</p>
+                  <p className="text-[10px] text-blue-500 mt-0.5">📋 งานทั้งหมด</p>
+                </div>
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{messengerStats.completed}</p>
+                  <p className="text-[10px] text-emerald-500 mt-0.5">✅ สำเร็จ</p>
+                </div>
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{messengerStats.totalDistanceKm}</p>
+                  <p className="text-[10px] text-purple-500 mt-0.5">🛣️ km รวม</p>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{messengerStats.totalTrips}</p>
+                  <p className="text-[10px] text-amber-500 mt-0.5">🏃 รอบวิ่ง</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Today Progress */}
+            <div className="bg-surface-50 dark:bg-surface-700/50 rounded-xl p-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Flame size={16} className="text-orange-500" />
+                <span className="text-xs font-medium text-surface-600 dark:text-surface-300">วันนี้</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold text-surface-800 dark:text-white">
+                  {messengerStats.todayCompleted}/{messengerStats.todayTotal} งาน
+                </span>
+                {messengerStats.todayTotal > 0 && (
+                  <div className="w-20 h-2 bg-surface-200 dark:bg-surface-600 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, (messengerStats.todayCompleted / messengerStats.todayTotal) * 100)}%` }} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Issue indicator */}
+            {messengerStats.issue > 0 && (
+              <div className="flex items-center gap-2 text-xs text-red-500">
+                <AlertTriangle size={14} />
+                <span>มีปัญหา {messengerStats.issue} งานเดือนนี้</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

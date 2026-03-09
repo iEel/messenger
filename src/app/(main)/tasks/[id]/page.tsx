@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import {
   ArrowLeft,
   FileText,
@@ -83,7 +84,9 @@ interface PodEntry {
 export default function TaskDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session } = useSession();
   const taskId = params.id as string;
+  const backUrl = session?.user?.role === 'messenger' ? '/messenger' : '/tasks';
 
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -192,7 +195,7 @@ export default function TaskDetailPage() {
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-surface-400">
         <FileText size={48} className="mb-3 opacity-30" />
         <p className="font-medium">ไม่พบใบงาน</p>
-        <Link href="/tasks" className="mt-4 text-primary-600 hover:underline text-sm">← กลับไปหน้ารายการ</Link>
+        <Link href={backUrl} className="mt-4 text-primary-600 hover:underline text-sm">← กลับไปหน้ารายการ</Link>
       </div>
     );
   }
@@ -203,7 +206,7 @@ export default function TaskDetailPage() {
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/tasks" className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
+        <Link href={backUrl} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
           <ArrowLeft size={20} className="text-surface-500" />
         </Link>
         <div className="flex-1">

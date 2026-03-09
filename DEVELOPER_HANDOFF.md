@@ -582,6 +582,13 @@ cancelled                         issue → return / reschedule
   - Haptic feedback (สั่น) เมื่อเริ่ม drag
   - ป้องกัน text selection: `preventDefault`, `select-none`, `WebkitTouchCallout`
   - Page scroll ปกติ — drag เฉพาะเมื่อกดค้างที่ grip
+- ★ **Per-Messenger Distance Report** — ระยะทางแยกรายบุคคล (ค่าน้ำมัน)
+  - API: `GET /api/analytics` → เพิ่ม `messengerDistance` (GROUP BY MessengerId)
+  - UI: ตาราง ⛽ ในหน้ารายงาน `/dispatcher/analytics`
+  - แสดง: ชื่อ, รอบวิ่ง, ระยะทาง (km), เวลาเฉลี่ย, ค่าน้ำมันประมาณ (บาท)
+  - อัตราค่าน้ำมันปรับได้ (default 2.5 บาท/km) — คำนวณ real-time
+  - แถวรวม Grand Total + รวมอยู่ใน CSV Export
+  - ระยะทาง = Haversine (เส้นตรง) — จริงอาจมากกว่า 10-30%
 
 ---
 

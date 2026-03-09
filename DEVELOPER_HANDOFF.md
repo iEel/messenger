@@ -620,6 +620,16 @@ cancelled                         issue → return / reschedule
   - เพิ่ม column `DistanceSource` ใน Trips table (auto-created)
   - หน้ารายงาน: badge 📡 Google (สีน้ำเงิน) / 📐 ประมาณ (สีส้ม)
   - Audit log: บันทึก source (google/haversine) ตอนจบรอบวิ่ง
+- ★ **Trip Summary Modal** — สรุปรอบวิ่งหลังจบ
+  - แสดง: จำนวนงาน, ระยะทาง km, เวลารวม, แหล่งที่มาระยะทาง
+  - Modal popup อัตโนมัติเมื่อแมสกดจบรอบวิ่ง
+  - ไฟล์: `src/app/(main)/messenger/page.tsx`
+- ★ **Messenger Personal Stats** — แดชบอร์ดสถิติส่วนตัว
+  - API: `/api/messenger-stats` — งานเดือนนี้, km รวม, รอบวิ่ง, อัตราสำเร็จ
+  - SVG progress ring แสดง % สำเร็จ
+  - Grid 4 ช่อง: งานทั้งหมด, สำเร็จ, km, รอบวิ่ง
+  - Progress bar วันนี้ + ตัวนับปัญหา
+  - แสดงเฉพาะ role messenger เท่านั้น
 
 ---
 

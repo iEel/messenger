@@ -589,6 +589,16 @@ cancelled                         issue → return / reschedule
   - อัตราค่าน้ำมันปรับได้ (default 2.5 บาท/km) — คำนวณ real-time
   - แถวรวม Grand Total + รวมอยู่ใน CSV Export
   - ระยะทาง = Haversine (เส้นตรง) — จริงอาจมากกว่า 10-30%
+- ★ **Task Template System** — ต้นแบบใบงาน (เก็บปลายทางที่ส่งบ่อย)
+  - DB: `TaskTemplates` table — auto-create, มี `IsShared` (BIT) สำหรับแชร์
+  - API: `GET/POST /api/task-templates` + `GET/PATCH/DELETE /api/task-templates/[id]`
+  - UI: `/tasks/templates` — รายการ Template แยก "ของฉัน" + "แชร์สาธารณะ" + ค้นหา
+  - UI: `/tasks/templates/new` + `/tasks/templates/[id]/edit` — ฟอร์มสร้าง/แก้ไข
+  - Integration: หน้าสร้างใบงาน รองรับ `?template=ID` → pre-fill ข้อมูลอัตโนมัติ
+  - ปุ่ม "เลือกจาก Template" ที่หน้าสร้างใบงาน
+  - สิทธิ์: admin/dispatcher แชร์ Template ได้, เจ้าของ/admin แก้ไข-ลบได้
+  - Sidebar: เมนู "ต้นแบบใบงาน" (roles: requester, dispatcher, admin)
+  - Audit logging: create/update/delete
 
 ---
 

@@ -436,7 +436,7 @@ export default function AnalyticsPage() {
             </table>
           </div>
           <p className="text-[10px] text-surface-400 mt-3">
-            * ระยะทางคำนวณจาก Haversine (เส้นตรง) — ระยะทางจริงอาจมากกว่า 10-30%
+            * ระยะทางคำนวณจาก Google Maps (ถนนจริง) — Haversine fallback หากไม่มี API Key
           </p>
         </div>
       )}

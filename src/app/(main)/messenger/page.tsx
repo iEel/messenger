@@ -20,6 +20,7 @@ import {
   Route,
   Map,
   Sparkles,
+  Eye,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
 import { PullToRefresh } from '@/components/pull-to-refresh';
@@ -576,7 +577,8 @@ export default function MessengerPage() {
                             <span className="w-6 h-6 rounded-full bg-surface-100 dark:bg-surface-700 flex items-center justify-center text-[10px] font-bold text-surface-600 dark:text-surface-300">
                               {index + 1}
                             </span>
-                            <span className="font-bold text-sm font-mono text-surface-800 dark:text-white">{task.TaskNumber}</span>
+                            <Link href={`/tasks/${task.Id}`}
+                              className="font-bold text-sm font-mono text-primary-600 dark:text-primary-400 hover:underline">{task.TaskNumber}</Link>
                             {task.Priority === 'urgent' && (
                               <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-100 text-red-600 animate-pulse">🔴 ด่วน!</span>
                             )}
@@ -640,6 +642,14 @@ export default function MessengerPage() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 mt-3 pt-3 border-t border-surface-100 dark:border-surface-700">
+                      {/* Detail */}
+                      <Link href={`/tasks/${task.Id}`}
+                        className="py-2.5 px-3 rounded-xl text-xs font-medium
+                                   border border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-400
+                                   hover:bg-surface-100 dark:hover:bg-surface-700
+                                   flex items-center justify-center gap-1.5 transition-colors">
+                        <Eye size={14} /> รายละเอียด
+                      </Link>
                       {/* Navigate — ขากลับนำทางไป Office */}
                       {(() => {
                         const isReturnLeg = ['return_picked_up', 'returning'].includes(task.Status);

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft,
@@ -21,6 +21,7 @@ import {
   ArrowRight as ArrowRightIcon,
   Calendar,
   AlertTriangle,
+  Copy,
 } from 'lucide-react';
 import AddressAutocomplete from '@/components/ui/AddressAutocomplete';
 import PhoneInput from '@/components/ui/PhoneInput';
@@ -28,6 +29,9 @@ import MapPicker from '@/components/ui/MapPicker';
 
 export default function CreateTaskPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const templateId = searchParams.get('template');
+
   const [form, setForm] = useState({
     recipientName: '',
     recipientPhone: '',
@@ -49,6 +53,38 @@ export default function CreateTaskPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [templateName, setTemplateName] = useState('');
+
+  // ★ โหลดข้อมูลจาก Template (ถ้ามี ?template=ID)
+  useEffect(() => {
+    if (!templateId) return;
+    const loadTemplate = async () => {
+      try {
+        const res = await fetch(`/api/task-templates/${templateId}`);
+        if (!res.ok) return;
+        const t = await res.json();
+        setTemplateName(t.Name || '');
+        setForm(prev => ({
+          ...prev,
+          recipientName: t.RecipientName || '',
+          recipientPhone: t.RecipientPhone || '',
+          recipientCompany: t.RecipientCompany || '',
+          taskType: t.TaskType || 'oneway',
+          documentDesc: t.DocumentDesc || '',
+          address: t.Address || '',
+          district: t.District || '',
+          subDistrict: t.SubDistrict || '',
+          province: t.Province || 'กรุงเทพมหานคร',
+          postalCode: t.PostalCode || '',
+          googleMapsUrl: t.GoogleMapsUrl || '',
+          latitude: t.Latitude?.toString() || '',
+          longitude: t.Longitude?.toString() || '',
+          priority: t.Priority || 'normal',
+        }));
+      } catch { /* ignore */ }
+    };
+    loadTemplate();
+  }, [templateId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -169,20 +205,40 @@ export default function CreateTaskPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link href="/tasks" className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
-          <ArrowLeft size={20} className="text-surface-500" />
-        </Link>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-            <FileText size={22} className="text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-surface-800 dark:text-white">สร้างใบงานใหม่</h1>
-            <p className="text-sm text-surface-500 dark:text-surface-400">กรอกข้อมูลเพื่อส่งเอกสาร</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/tasks" className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
+            <ArrowLeft size={20} className="text-surface-500" />
+          </Link>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <FileText size={22} className="text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-surface-800 dark:text-white">สร้างใบงานใหม่</h1>
+              <p className="text-sm text-surface-500 dark:text-surface-400">กรอกข้อมูลเพื่อส่งเอกสาร</p>
+            </div>
           </div>
         </div>
+        <Link href="/tasks/templates"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold
+                     text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20
+                     border border-indigo-200 dark:border-indigo-800
+                     hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors cursor-pointer">
+          <Copy size={14} /> เลือกจาก Template
+        </Link>
       </div>
+
+      {/* Template Info Banner */}
+      {templateName && (
+        <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800
+                        flex items-center gap-2 animate-fade-in">
+          <Copy size={16} className="text-indigo-500 shrink-0" />
+          <p className="text-sm text-indigo-700 dark:text-indigo-300">
+            ใช้ข้อมูลจาก Template: <strong>{templateName}</strong>
+          </p>
+        </div>
+      )}
 
       {/* Messages */}
       {error && (

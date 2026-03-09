@@ -599,6 +599,11 @@ cancelled                         issue → return / reschedule
   - สิทธิ์: admin/dispatcher แชร์ Template ได้, เจ้าของ/admin แก้ไข-ลบได้
   - Sidebar: เมนู "ต้นแบบใบงาน" (roles: requester, dispatcher, admin)
   - Audit logging: create/update/delete
+- ★ **Role-Based Dashboard Quick Actions** — ปุ่มลัดบนแดชบอร์ดตาม role
+  - Messenger: 🏍️ งานวิ่ง + ▶️ เริ่มรอบวิ่ง
+  - Requester/Admin: 📝 สร้างใบงานใหม่ + ✅ ติดตามงาน
+  - Dispatcher/Admin: 🚚 กระดานจ่ายงาน
+  - Admin เพิ่ม: 👥 จัดการผู้ใช้
 
 ---
 

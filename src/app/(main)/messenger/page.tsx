@@ -21,6 +21,8 @@ import {
   Map,
   Sparkles,
   Eye,
+  Trophy,
+  X,
 } from 'lucide-react';
 import { STATUS_CONFIG, type TaskStatus } from '@/lib/types';
 import { PullToRefresh } from '@/components/pull-to-refresh';
@@ -63,6 +65,14 @@ export default function MessengerPage() {
     totalDistanceKm: number;
     totalDurationMinutes: number;
     source: string;
+  } | null>(null);
+
+  // Trip Summary Modal
+  const [tripSummary, setTripSummary] = useState<{
+    totalTasks: number;
+    totalDistanceKm: number;
+    distanceSource: string;
+    duration: string;
   } | null>(null);
 
   // Drag & Drop state
@@ -204,11 +214,35 @@ export default function MessengerPage() {
     if (!activeTrip || !confirm('ต้องการปิดรอบวิ่ง?')) return;
     setTripLoading(true);
     try {
-      await fetch(`/api/trips/${activeTrip.Id}`, {
+      // Calculate trip duration
+      const start = new Date(activeTrip.StartTime).getTime();
+      const diffMs = Date.now() - start;
+      const h = Math.floor(diffMs / 3600000);
+      const m = Math.floor((diffMs % 3600000) / 60000);
+      const durationStr = h > 0 ? `${h} ชม. ${m} นาที` : `${m} นาที`;
+
+      // Count completed tasks in this trip
+      const completedCount = tasks.filter(t =>
+        ['completed', 'returned'].includes(t.Status)
+      ).length + tasks.filter(t =>
+        ['assigned', 'picked_up', 'in_transit', 'return_picked_up', 'returning'].includes(t.Status)
+      ).length;
+
+      const res = await fetch(`/api/trips/${activeTrip.Id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: 'จบรอบวิ่ง' }),
       });
+      const data = await res.json();
+
+      // ★ Show trip summary modal
+      setTripSummary({
+        totalTasks: completedCount,
+        totalDistanceKm: data.totalDistanceKm || 0,
+        distanceSource: data.distanceSource || 'haversine',
+        duration: durationStr,
+      });
+
       setOptimizeResult(null);
       fetchData();
     } finally {
@@ -417,6 +451,7 @@ export default function MessengerPage() {
   const fullTripUrl = buildFullTripUrl();
 
   return (
+    <>
     <PullToRefresh onRefresh={fetchData}>
     <div className="max-w-lg mx-auto space-y-5 animate-fade-in pb-8">
       {/* Trip Control */}
@@ -710,5 +745,74 @@ export default function MessengerPage() {
       </div>
     </div>
     </PullToRefresh>
+
+    {/* ★ Trip Summary Modal */}
+    {tripSummary && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in p-4">
+        <div className="bg-white dark:bg-surface-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 text-center text-white relative">
+            <button
+              onClick={() => setTripSummary(null)}
+              className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-white/20 transition-colors">
+              <X size={18} />
+            </button>
+            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3">
+              <Trophy size={32} />
+            </div>
+            <h2 className="text-xl font-bold">จบรอบวิ่งแล้ว! 🎉</h2>
+            <p className="text-sm text-emerald-100 mt-1">สรุปผลรอบวิ่ง</p>
+          </div>
+
+          {/* Stats */}
+          <div className="p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              {/* Tasks */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 text-center">
+                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{tripSummary.totalTasks}</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1 font-medium">📋 งานทั้งหมด</p>
+              </div>
+
+              {/* Distance */}
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4 text-center">
+                <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                  {tripSummary.totalDistanceKm > 0 ? tripSummary.totalDistanceKm.toFixed(1) : '0'}
+                </p>
+                <p className="text-xs text-emerald-500 dark:text-emerald-400 mt-1 font-medium">🛣️ กิโลเมตร</p>
+              </div>
+            </div>
+
+            {/* Duration */}
+            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-2xl p-4 flex items-center justify-center gap-3">
+              <Timer size={20} className="text-purple-500" />
+              <div>
+                <p className="text-lg font-bold text-purple-600 dark:text-purple-400">{tripSummary.duration}</p>
+                <p className="text-xs text-purple-400">⏱️ เวลารวม</p>
+              </div>
+            </div>
+
+            {/* Distance Source */}
+            <div className="flex items-center justify-center gap-2 text-[11px]">
+              <span className={`inline-flex items-center px-2 py-1 rounded-full font-semibold
+                ${tripSummary.distanceSource === 'google'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'}`}>
+                {tripSummary.distanceSource === 'google' ? '📡 Google Maps (ถนนจริง)' : '📐 ระยะทางประมาณ'}
+              </span>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setTripSummary(null)}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600
+                         text-white font-semibold shadow-lg hover:shadow-xl
+                         transition-all cursor-pointer text-sm">
+              ตกลง
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

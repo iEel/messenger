@@ -631,6 +631,53 @@ cancelled                         issue → return / reschedule
   - Progress bar วันนี้ + ตัวนับปัญหา
   - แสดงเฉพาะ role messenger เท่านั้น
 
+### Phase 12 — Automated Tests ★ (ใหม่)
+- ★ **Vitest Test Framework** — ติดตั้ง + config (`vitest.config.ts`)
+- ★ **Unit Tests** (5 test files, 89 test cases)
+  - `distance.test.ts` (27 tests) — Haversine, formatDistance/Duration, route optimization, fuel cost calculation
+  - `date-utils.test.ts` (26 tests) — Thai date formats, timezone parsing, ทุกเดือน 12 เดือน, edge cases
+  - `email-action.test.ts` (14 tests) — HMAC token สร้าง/ยืนยัน/หมดอายุ/ถูกแก้ไข
+  - `route-cache.test.ts` (11 tests) — TTL expiry, 500-entry limit, key generation
+  - `rate-limit.test.ts` (11 tests) — Sliding window, block/unblock, login แยก general, stats
+
+---
+
+## 9. การทดสอบ (Automated Tests)
+
+### 9.1 Tech Stack
+| เครื่องมือ | เวอร์ชัน | ใช้ทำอะไร |
+|-----------|---------|----------|
+| Vitest | 4.x | Test runner + assertions |
+
+### 9.2 คำสั่ง
+```bash
+# รัน test ครั้งเดียว
+npm test
+
+# รัน test แบบ watch mode (auto-rerun เมื่อแก้โค้ด)
+npm run test:watch
+```
+
+### 9.3 โครงสร้างไฟล์ Test
+```
+src/lib/__tests__/
+├── distance.test.ts       ← Haversine, format, route optimization, fuel cost (27 tests)
+├── date-utils.test.ts     ← Thai date formatting + timezone fix (26 tests)
+├── email-action.test.ts   ← HMAC token create/verify/expire (14 tests)
+├── route-cache.test.ts    ← In-memory cache TTL + eviction (11 tests)
+└── rate-limit.test.ts     ← Sliding window rate limiter (11 tests)
+```
+
+### 9.4 Test Coverage
+| Module | Tests | ครอบคลุม |
+|--------|-------|---------|
+| `lib/distance.ts` | 27 | haversineDistance, formatDistance, formatDuration, calculateRoute (fallback), calculateOptimizedRoute (nearest-neighbor), calculateActualRouteDistance, fuel cost |
+| `lib/date-utils.ts` | 26 | formatDateTime, formatDateTimeShort, formatDate, formatDateFull, DB timezone parsing, ทุกเดือน, edge cases |
+| `lib/email-action.ts` | 14 | createEmailActionToken, verifyEmailActionToken, buildEmailActionUrl, expired/tampered/invalid tokens |
+| `lib/route-cache.ts` | 11 | get/set, TTL expiry, 500-entry eviction, clear, coordKey/routeKey/optimizeKey |
+| `lib/rate-limit.ts` | 11 | checkRateLimit (general+login), block/unblock, getRateLimitConfig, getRateLimitStats |
+| **รวม** | **89** | |
+
 ---
 
 ## 10. Known Issues & Technical Debt

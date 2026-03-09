@@ -69,17 +69,27 @@ export async function PATCH(
       // ไม่ block การปิดรอบวิ่ง
     }
 
+    // ★ Auto-create DistanceSource column if needed
+    try {
+      await query(`
+        IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Trips' AND COLUMN_NAME='DistanceSource')
+        ALTER TABLE Trips ADD DistanceSource NVARCHAR(20) NULL
+      `);
+    } catch { /* ignore */ }
+
     await query(
       `UPDATE Trips SET 
         Status = 'completed', 
         EndTime = GETDATE(), 
         TotalDistanceKm = @distance,
+        DistanceSource = @source,
         Notes = @notes
        WHERE Id = @id AND MessengerId = @userId`,
       {
         id: tripId,
         userId,
         distance: totalDistanceKm || null,
+        source: distanceSource,
         notes: body.notes || null,
       }
     );

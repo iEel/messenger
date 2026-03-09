@@ -161,23 +161,51 @@ export async function GET(request: NextRequest) {
     `, tripParams);
 
     // ★ ระยะทางแยกรายบุคคล (สำหรับคำนวณค่าน้ำมัน)
-    const messengerDistance = await query<{
+    let messengerDistance: {
       MessengerId: number; FullName: string;
       totalTrips: number; totalDistanceKm: number; avgDurationMinutes: number;
-    }[]>(`
-      SELECT 
-        tr.MessengerId,
-        u.FullName,
-        COUNT(*) AS totalTrips,
-        ISNULL(SUM(tr.TotalDistanceKm), 0) AS totalDistanceKm,
-        ISNULL(AVG(DATEDIFF(MINUTE, tr.StartTime, tr.EndTime)), 0) AS avgDurationMinutes
-      FROM Trips tr
-      JOIN Users u ON tr.MessengerId = u.Id
-      WHERE ${tripDateCondition}
-        AND tr.Status = 'completed'
-      GROUP BY tr.MessengerId, u.FullName
-      ORDER BY totalDistanceKm DESC
-    `, tripParams);
+      distanceSource: string | null;
+    }[] = [];
+
+    // Check if DistanceSource column exists
+    const hasSourceCol = await query<{ cnt: number }[]>(`
+      SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME='Trips' AND COLUMN_NAME='DistanceSource'
+    `);
+
+    if (hasSourceCol[0]?.cnt > 0) {
+      messengerDistance = await query(`
+        SELECT 
+          tr.MessengerId,
+          u.FullName,
+          COUNT(*) AS totalTrips,
+          ISNULL(SUM(tr.TotalDistanceKm), 0) AS totalDistanceKm,
+          ISNULL(AVG(DATEDIFF(MINUTE, tr.StartTime, tr.EndTime)), 0) AS avgDurationMinutes,
+          (SELECT TOP 1 tr2.DistanceSource FROM Trips tr2 WHERE tr2.MessengerId = tr.MessengerId AND tr2.DistanceSource IS NOT NULL ORDER BY tr2.Id DESC) AS distanceSource
+        FROM Trips tr
+        JOIN Users u ON tr.MessengerId = u.Id
+        WHERE ${tripDateCondition}
+          AND tr.Status = 'completed'
+        GROUP BY tr.MessengerId, u.FullName
+        ORDER BY totalDistanceKm DESC
+      `, tripParams);
+    } else {
+      messengerDistance = await query(`
+        SELECT 
+          tr.MessengerId,
+          u.FullName,
+          COUNT(*) AS totalTrips,
+          ISNULL(SUM(tr.TotalDistanceKm), 0) AS totalDistanceKm,
+          ISNULL(AVG(DATEDIFF(MINUTE, tr.StartTime, tr.EndTime)), 0) AS avgDurationMinutes,
+          NULL AS distanceSource
+        FROM Trips tr
+        JOIN Users u ON tr.MessengerId = u.Id
+        WHERE ${tripDateCondition}
+          AND tr.Status = 'completed'
+        GROUP BY tr.MessengerId, u.FullName
+        ORDER BY totalDistanceKm DESC
+      `, tripParams);
+    }
 
     // จำนวน Tasks ทั้งหมด
     const totalParams: Record<string, unknown> = {};

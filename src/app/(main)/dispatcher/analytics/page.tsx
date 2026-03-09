@@ -41,6 +41,7 @@ interface TripStats {
 interface MessengerDistanceItem {
   MessengerId: number; FullName: string;
   totalTrips: number; totalDistanceKm: number; avgDurationMinutes: number;
+  distanceSource: string | null;
 }
 
 const DAY_NAMES: Record<number, string> = {
@@ -408,6 +409,14 @@ export default function AnalyticsPage() {
                       <td className="py-2.5 px-2 text-center">
                         <span className="font-bold text-emerald-600">{m.totalDistanceKm.toFixed(1)}</span>
                         <span className="text-xs text-surface-400 ml-1">km</span>
+                        {m.distanceSource && (
+                          <span className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold
+                            ${m.distanceSource === 'google'
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                              : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'}`}>
+                            {m.distanceSource === 'google' ? '📡 Google' : '📐 ประมาณ'}
+                          </span>
+                        )}
                       </td>
                       <td className="py-2.5 px-2 text-center text-surface-600 dark:text-surface-300">
                         {m.avgDurationMinutes > 0 ? `${m.avgDurationMinutes} นาที` : '-'}

@@ -175,7 +175,6 @@ export async function GET(request: NextRequest) {
       JOIN Users u ON tr.MessengerId = u.Id
       WHERE ${tripDateCondition}
         AND tr.Status = 'completed'
-        AND tr.TotalDistanceKm IS NOT NULL
       GROUP BY tr.MessengerId, u.FullName
       ORDER BY totalDistanceKm DESC
     `, tripParams);

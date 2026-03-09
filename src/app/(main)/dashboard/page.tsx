@@ -13,6 +13,8 @@ import {
   Loader2,
   Trophy,
   BarChart3,
+  Bike,
+  PlayCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatDateFull } from '@/lib/date-utils';
@@ -232,7 +234,7 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(session?.user?.role === 'admin' || session?.user?.role === 'dispatcher') && (
+        {(userRole === 'admin' || userRole === 'dispatcher') && (
           <Link href="/dispatcher" className="group">
             <div className="bg-white dark:bg-surface-800 rounded-2xl p-6 border border-surface-200 dark:border-surface-700
                             shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
@@ -251,7 +253,7 @@ export default function DashboardPage() {
           </Link>
         )}
 
-        {session?.user?.role === 'admin' && (
+        {userRole === 'admin' && (
           <Link href="/admin/users" className="group">
             <div className="bg-white dark:bg-surface-800 rounded-2xl p-6 border border-surface-200 dark:border-surface-700
                             shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
@@ -270,39 +272,83 @@ export default function DashboardPage() {
           </Link>
         )}
 
-        <Link href="/tasks/new" className="group">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl p-6 border border-surface-200 dark:border-surface-700
-                          shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
-                          transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <FileText size={22} className="text-blue-600 dark:text-blue-400" />
+        {/* ★ Requester / Admin — สร้างและติดตามใบงาน */}
+        {(userRole === 'requester' || userRole === 'admin') && (
+          <>
+            <Link href="/tasks/new" className="group">
+              <div className="bg-white dark:bg-surface-800 rounded-2xl p-6 border border-surface-200 dark:border-surface-700
+                              shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
+                              transition-all duration-300 hover:-translate-y-1">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <FileText size={22} className="text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <ArrowUpRight size={18} className="text-surface-400 group-hover:text-primary-500 transition-colors" />
+                </div>
+                <h3 className="font-semibold text-surface-800 dark:text-white">สร้างใบงานใหม่</h3>
+                <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
+                  สร้างใบงานส่งเอกสารใหม่
+                </p>
               </div>
-              <ArrowUpRight size={18} className="text-surface-400 group-hover:text-primary-500 transition-colors" />
-            </div>
-            <h3 className="font-semibold text-surface-800 dark:text-white">สร้างใบงานใหม่</h3>
-            <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-              สร้างใบงานส่งเอกสารใหม่
-            </p>
-          </div>
-        </Link>
+            </Link>
 
-        <Link href="/tasks" className="group">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl p-6 border border-surface-200 dark:border-surface-700
-                          shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
-                          transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                <CheckCircle2 size={22} className="text-emerald-600 dark:text-emerald-400" />
+            <Link href="/tasks" className="group">
+              <div className="bg-white dark:bg-surface-800 rounded-2xl p-6 border border-surface-200 dark:border-surface-700
+                              shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
+                              transition-all duration-300 hover:-translate-y-1">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                    <CheckCircle2 size={22} className="text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <ArrowUpRight size={18} className="text-surface-400 group-hover:text-primary-500 transition-colors" />
+                </div>
+                <h3 className="font-semibold text-surface-800 dark:text-white">ติดตามงาน</h3>
+                <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
+                  ดูสถานะและติดตามใบงานทั้งหมด
+                </p>
               </div>
-              <ArrowUpRight size={18} className="text-surface-400 group-hover:text-primary-500 transition-colors" />
-            </div>
-            <h3 className="font-semibold text-surface-800 dark:text-white">ติดตามงาน</h3>
-            <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-              ดูสถานะและติดตามใบงานทั้งหมด
-            </p>
-          </div>
-        </Link>
+            </Link>
+          </>
+        )}
+
+        {/* ★ Messenger — งานวิ่ง + เริ่มรอบวิ่ง */}
+        {userRole === 'messenger' && (
+          <>
+            <Link href="/messenger" className="group">
+              <div className="bg-white dark:bg-surface-800 rounded-2xl p-6 border border-surface-200 dark:border-surface-700
+                              shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
+                              transition-all duration-300 hover:-translate-y-1">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <Bike size={22} className="text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <ArrowUpRight size={18} className="text-surface-400 group-hover:text-primary-500 transition-colors" />
+                </div>
+                <h3 className="font-semibold text-surface-800 dark:text-white">งานวิ่ง</h3>
+                <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
+                  ดูรายการงานที่ได้รับมอบหมาย
+                </p>
+              </div>
+            </Link>
+
+            <Link href="/messenger" className="group">
+              <div className="bg-white dark:bg-surface-800 rounded-2xl p-6 border border-surface-200 dark:border-surface-700
+                              shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-card-hover)]
+                              transition-all duration-300 hover:-translate-y-1">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                    <PlayCircle size={22} className="text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <ArrowUpRight size={18} className="text-surface-400 group-hover:text-primary-500 transition-colors" />
+                </div>
+                <h3 className="font-semibold text-surface-800 dark:text-white">เริ่มรอบวิ่ง</h3>
+                <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
+                  เริ่มรอบการส่งเอกสาร
+                </p>
+              </div>
+            </Link>
+          </>
+        )}
       </div>
     </div>
   );

@@ -297,7 +297,8 @@ export default function DispatcherPage() {
     const ok = await confirm({
       title: 'ยกเลิกใบงาน',
       message: `ยืนยันยกเลิกใบงาน ${task.TaskNumber}?\nเอกสาร: ${task.DocumentDesc}\nผู้รับ: ${task.RecipientName}`,
-      confirmText: 'ยกเลิก',
+      confirmText: 'ยืนยันยกเลิก',
+      cancelText: 'ไม่ใช่',
       type: 'danger',
     });
     if (!ok) return;

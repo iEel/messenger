@@ -575,6 +575,13 @@ cancelled                         issue → return / reschedule
   - แผนก/Role เปลี่ยนได้โดย Admin เท่านั้น
   - Sidebar: คลิกชื่อผู้ใช้ด้านล่าง → ไปหน้า `/profile`
   - Audit log บันทึกทุกการแก้ไข
+- ★ **Dispatcher Cancel Dialog UX** — แก้ปุ่มซ้ำ "ยกเลิก" 2 ปุ่มที่สับสน
+  - ปุ่มปิด dialog → "ไม่ใช่", ปุ่มยกเลิกใบงาน → "ยืนยันยกเลิก"
+- ★ **Mobile Touch Drag & Drop** — แก้ลากสลับคิวงานบนมือถือ
+  - Long-press 400ms ที่ ⠿ (grip icon) ก่อนเริ่ม drag
+  - Haptic feedback (สั่น) เมื่อเริ่ม drag
+  - ป้องกัน text selection: `preventDefault`, `select-none`, `WebkitTouchCallout`
+  - Page scroll ปกติ — drag เฉพาะเมื่อกดค้างที่ grip
 
 ---
 

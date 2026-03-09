@@ -126,7 +126,14 @@ export default function Sidebar() {
 
         {/* User */}
         {session?.user && (
-          <div className={`flex items-center gap-3 px-3 py-2 rounded-xl bg-surface-100 dark:bg-surface-800 ${collapsed ? 'justify-center' : ''}`}>
+          <Link
+            href="/profile"
+            onClick={() => setMobileOpen(false)}
+            className={`flex items-center gap-3 px-3 py-2 rounded-xl bg-surface-100 dark:bg-surface-800 
+                         hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors cursor-pointer
+                         ${collapsed ? 'justify-center' : ''}
+                         ${pathname === '/profile' ? 'ring-2 ring-primary-500' : ''}`}
+          >
             <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900/50 flex items-center justify-center shrink-0">
               <UserCircle size={18} className="text-primary-600 dark:text-primary-400" />
             </div>
@@ -142,7 +149,7 @@ export default function Sidebar() {
                 </p>
               </div>
             )}
-          </div>
+          </Link>
         )}
 
         {/* Logout */}

@@ -610,6 +610,16 @@ cancelled                         issue → return / reschedule
   - เลขที่ใบงาน กดลิงก์ /tasks/[id] ดูรายละเอียดงานได้
   - เพิ่มปุ่ม 👁️ "รายละเอียด" ในแถว action ของแต่ละ card
   - ปุ่มย้อนกลับ: messenger → /messenger, requester/admin → /tasks
+- ★ **Google Maps Distance Calculation** — คำนวณระยะทางจริงบนถนน
+  - ใช้ Google Routes API v2 (TWO_WHEELER) ตอนจบรอบวิ่ง
+  - ดึงลำดับจริงจาก TaskStatusHistory (ไม่ใช่ลำดับที่วางแผน)
+  - Route: ออฟฟิศ → งาน1 → งาน2 → ... → ออฟฟิศ (multi-waypoint, 1 API call)
+  - Haversine fallback อัตโนมัติหาก API Key ไม่พร้อม
+  - ฟังก์ชัน: `calculateActualRouteDistance()` ใน `src/lib/distance.ts`
+- ★ **Distance Source Indicator** — แสดงแหล่งที่มาของระยะทาง
+  - เพิ่ม column `DistanceSource` ใน Trips table (auto-created)
+  - หน้ารายงาน: badge 📡 Google (สีน้ำเงิน) / 📐 ประมาณ (สีส้ม)
+  - Audit log: บันทึก source (google/haversine) ตอนจบรอบวิ่ง
 
 ---
 

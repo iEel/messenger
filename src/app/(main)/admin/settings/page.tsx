@@ -27,7 +27,11 @@ interface Setting {
 }
 
 // จัดกลุ่ม settings ตามหมวดหมู่
-const settingGroups = [
+const settingGroups: {
+  title: string; description: string; icon: React.ReactNode;
+  color: string; bgColor: string; borderColor: string;
+  keys: { key: string; label: string; icon: React.ReactNode; type: 'text' | 'number'; placeholder?: string; hint?: string }[];
+}[] = [
   {
     title: '📍 พิกัดออฟฟิศ',
     description: 'ตำแหน่งจุดรับเอกสารส่วนกลาง สำหรับคำนวณระยะทาง',
@@ -49,7 +53,8 @@ const settingGroups = [
     bgColor: 'bg-indigo-50 dark:bg-indigo-900/20',
     borderColor: 'border-indigo-200 dark:border-indigo-800',
     keys: [
-      { key: 'task_number_prefix', label: 'คำนำหน้าเลขใบงาน', icon: <Hash size={16} />, type: 'text' as const, placeholder: 'MSG' },
+      { key: 'task_number_prefix', label: 'คำนำหน้าเลขใบงาน', icon: <Hash size={16} />, type: 'text' as const, placeholder: 'MSG',
+        hint: 'FORMAT_PREVIEW' },
     ],
   },
 ];
@@ -254,6 +259,23 @@ export default function AdminSettingsPage() {
                              focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
                              transition-all"
                 />
+                {/* ★ Task Number Format Preview */}
+                {field.hint === 'FORMAT_PREVIEW' && (
+                  <div className="mt-2 p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800">
+                    <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 mb-1">📋 รูปแบบเลขที่ใบงาน</p>
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mb-2">
+                      <code className="px-1.5 py-0.5 rounded bg-surface-100 dark:bg-surface-700 font-mono text-surface-700 dark:text-surface-200">
+                        {getValue(field.key) || 'MSG'}-YYYYMM-NNNN
+                      </code>
+                    </p>
+                    <p className="text-xs text-surface-500 dark:text-surface-400">
+                      ตัวอย่าง:&nbsp;
+                      <span className="font-bold text-indigo-700 dark:text-indigo-300 font-mono">
+                        {getValue(field.key) || 'MSG'}-{new Date().getFullYear()}{String(new Date().getMonth() + 1).padStart(2, '0')}-0001
+                      </span>
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
 

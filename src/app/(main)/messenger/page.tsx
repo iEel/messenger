@@ -302,15 +302,34 @@ export default function MessengerPage() {
     setOptimizeResult(null); // ล้างผลลัพธ์ optimize เมื่อ manual reorder
   };
 
-  // Touch Drag & Drop
+  // Touch Drag & Drop (Long-Press 400ms)
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const [isDraggingTouch, setIsDraggingTouch] = useState(false);
+
   const handleTouchStart = (e: React.TouchEvent, index: number) => {
     touchStartY.current = e.touches[0].clientY;
-    dragItem.current = index;
-    setDragIndex(index);
+    // ⏱ Long-press: ต้องกดค้าง 400ms ก่อนเริ่ม drag
+    longPressTimer.current = setTimeout(() => {
+      dragItem.current = index;
+      setDragIndex(index);
+      setIsDraggingTouch(true);
+      // Haptic feedback (ถ้า mobile รองรับ)
+      if (navigator.vibrate) navigator.vibrate(50);
+    }, 400);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (dragItem.current === null) return;
+    // ถ้ายังไม่เริ่ม drag (ยังไม่ long-press) → ยกเลิก timer + ปล่อย scroll ปกติ
+    if (!isDraggingTouch) {
+      if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+      return;
+    }
+
+    // กำลัง drag → ห้าม scroll
+    e.preventDefault();
     touchMoveY.current = e.touches[0].clientY;
     const cards = document.querySelectorAll('[data-task-card]');
     for (let i = 0; i < cards.length; i++) {
@@ -323,7 +342,13 @@ export default function MessengerPage() {
   };
 
   const handleTouchEnd = () => {
-    if (dragItem.current !== null && dragOverIndex !== null && dragItem.current !== dragOverIndex) {
+    // ยกเลิก long-press timer ถ้ายังไม่ trigger
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+
+    if (isDraggingTouch && dragItem.current !== null && dragOverIndex !== null && dragItem.current !== dragOverIndex) {
       const updated = [...tasks];
       const [movedItem] = updated.splice(dragItem.current, 1);
       updated.splice(dragOverIndex, 0, movedItem);
@@ -333,6 +358,7 @@ export default function MessengerPage() {
     setDragIndex(null);
     setDragOverIndex(null);
     dragItem.current = null;
+    setIsDraggingTouch(false);
   };
 
   // ================================================================
@@ -493,7 +519,7 @@ export default function MessengerPage() {
         </h2>
         {tasks.length >= 2 && (
           <p className="text-[10px] text-surface-400 dark:text-surface-500 mb-3 flex items-center gap-1">
-            <GripVertical size={10} /> ลากเพื่อสลับลำดับคิวงาน
+            <GripVertical size={10} /> กดค้างที่ไอคอน ⠿ แล้วลากเพื่อสลับลำดับ
           </p>
         )}
 
@@ -519,9 +545,6 @@ export default function MessengerPage() {
                   onDragOver={(e) => handleDragOver(e, index)}
                   onDrop={() => handleDrop(index)}
                   onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
-                  onTouchStart={(e) => handleTouchStart(e, index)}
-                  onTouchMove={(e) => handleTouchMove(e)}
-                  onTouchEnd={handleTouchEnd}
                   className={`bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700
                               shadow-[var(--shadow-card)] overflow-hidden transition-all duration-200
                               ${task.Priority === 'urgent' ? 'border-red-300 dark:border-red-700' : ''}
@@ -534,9 +557,16 @@ export default function MessengerPage() {
                     {/* Header with drag handle */}
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        {/* Drag Handle */}
-                        <div className="cursor-grab active:cursor-grabbing text-surface-300 dark:text-surface-600 hover:text-surface-500 touch-none">
-                          <GripVertical size={18} />
+                        {/* Drag Handle — จับ touch event ที่นี่เท่านั้น */}
+                        <div
+                          onTouchStart={(e) => handleTouchStart(e, index)}
+                          onTouchMove={(e) => handleTouchMove(e)}
+                          onTouchEnd={handleTouchEnd}
+                          className={`cursor-grab active:cursor-grabbing text-surface-300 dark:text-surface-600 
+                                      hover:text-surface-500 p-1 -m-1 rounded-lg
+                                      ${isDragging ? 'text-indigo-500 scale-110' : ''}`}
+                        >
+                          <GripVertical size={20} />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">

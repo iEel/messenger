@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { auth } from '@/lib/auth';
-import { haversineDistance } from '@/lib/distance';
+import { calculateActualRouteDistance } from '@/lib/distance';
 import { logAudit } from '@/lib/audit';
 
-// PATCH - จบรอบวิ่ง + Loop Closing (คำนวณระยะทางกลับ)
+// PATCH - จบรอบวิ่ง + คำนวณระยะทางจริง (Google Maps API)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,10 +20,10 @@ export async function PATCH(
     const userId = parseInt(session.user.id);
     const tripId = parseInt(id);
 
-    // คำนวณระยะทางรวมจากงานที่วิ่งในรอบนี้
     let totalDistanceKm = body.totalDistanceKm || 0;
+    let distanceSource = 'client';
 
-    // ดึงพิกัดออฟฟิศ + งานที่ completed/returned ในรอบนี้ เพื่อคำนวณ Loop Closing
+    // ★ คำนวณระยะทางจริงจาก Google Maps API (ตามลำดับที่แมสวิ่งจริง)
     try {
       const officeSettings = await query<{ SettingKey: string; SettingValue: string }[]>(
         `SELECT SettingKey, SettingValue FROM SystemSettings WHERE SettingKey IN ('office_lat', 'office_lng')`
@@ -32,47 +32,35 @@ export async function PATCH(
       const officeLng = parseFloat(officeSettings.find(s => s.SettingKey === 'office_lng')?.SettingValue || '0');
 
       if (officeLat && officeLng) {
-        // ดึง Trip start time
         const trips = await query<{ StartTime: string }[]>(
           `SELECT StartTime FROM Trips WHERE Id = @tripId AND MessengerId = @userId`,
           { tripId, userId }
         );
 
         if (trips.length > 0) {
-          // ดึงงานที่สำเร็จระหว่าง trip นี้ (completed/returned ตั้งแต่ StartTime)
-          const completedTasks = await query<{ Latitude: number | null; Longitude: number | null }[]>(
-            `SELECT t.Latitude, t.Longitude
-             FROM Tasks t
+          // ★ ดึงลำดับจริงจาก TaskStatusHistory — เรียงตามเวลาที่กด "ส่งสำเร็จ" / "คืนเอกสาร"
+          const actualRoute = await query<{ Latitude: number; Longitude: number; Status: string }[]>(
+            `SELECT t.Latitude, t.Longitude, tsh.Status
+             FROM TaskStatusHistory tsh
+             INNER JOIN Tasks t ON tsh.TaskId = t.Id
              WHERE t.AssignedTo = @userId
-               AND t.Status IN ('completed', 'returned')
+               AND tsh.Status IN ('completed', 'returned')
+               AND tsh.CreatedAt >= @startTime
                AND t.Latitude IS NOT NULL AND t.Longitude IS NOT NULL
-               AND t.CompletedAt >= @startTime
-             ORDER BY t.CompletedAt ASC`,
+             ORDER BY tsh.CreatedAt ASC`,
             { userId, startTime: trips[0].StartTime }
           );
 
-          if (completedTasks.length > 0) {
-            // คำนวณระยะทาง: Office → Task1 → Task2 → ... → TaskN
-            let calcKm = 0;
-            let prev = { lat: officeLat, lng: officeLng };
+          if (actualRoute.length > 0) {
+            const waypoints = actualRoute.map(t => ({ lat: t.Latitude, lng: t.Longitude }));
+            const office = { lat: officeLat, lng: officeLng };
 
-            for (const task of completedTasks) {
-              if (task.Latitude && task.Longitude) {
-                const d = haversineDistance(prev, { lat: task.Latitude, lng: task.Longitude });
-                calcKm += d;
-                prev = { lat: task.Latitude, lng: task.Longitude };
-              }
-            }
+            // ★ Google Routes API: ออฟฟิศ → Task1 → Task2 → ... → ออฟฟิศ
+            const result = await calculateActualRouteDistance(office, waypoints, true);
+            totalDistanceKm = result.totalDistanceKm;
+            distanceSource = result.source;
 
-            // Loop Closing: TaskN → Office (ระยะทางวิ่งกลับ)
-            const returnKm = haversineDistance(prev, { lat: officeLat, lng: officeLng });
-            calcKm += returnKm;
-
-            // ใช้ค่าที่คำนวณได้ (ถ้า client ไม่ส่งมา หรือส่งมาน้อยกว่า)
-            // 💰 ใช้ Haversine ฟรี — ไม่เรียก Google API
-            if (calcKm > totalDistanceKm) {
-              totalDistanceKm = Math.round(calcKm * 100) / 100;
-            }
+            console.log(`[Trip] Distance: ${totalDistanceKm} km (${distanceSource}), ${waypoints.length} stops`);
           }
         }
       }
@@ -97,11 +85,12 @@ export async function PATCH(
     );
 
     // ★ Audit log
-    logAudit({ action: 'trip_ended', userId, targetType: 'trip', targetId: tripId, details: `จบรอบวิ่ง — ${totalDistanceKm ? totalDistanceKm.toFixed(1) + ' km' : 'ไม่มีระยะทาง'}` });
+    logAudit({ action: 'trip_ended', userId, targetType: 'trip', targetId: tripId, details: `จบรอบวิ่ง — ${totalDistanceKm ? totalDistanceKm.toFixed(1) + ' km (' + distanceSource + ')' : 'ไม่มีระยะทาง'}` });
 
     return NextResponse.json({
       message: 'ปิดรอบวิ่งแล้ว',
       totalDistanceKm,
+      distanceSource,
     });
   } catch (error) {
     console.error('PATCH /api/trips/[id] error:', error);

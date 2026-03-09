@@ -272,6 +272,91 @@ function haversineOptimize(origin: LatLng, destination: LatLng, waypoints: LatLn
 }
 
 // ============================================================
+// Actual Route Distance — คำนวณระยะทางจริงตามลำดับที่แมสวิ่ง
+// ★ ใช้ตอนจบรอบวิ่ง — เรียก Google API ครั้งเดียว
+// ============================================================
+export async function calculateActualRouteDistance(
+  origin: LatLng,
+  waypoints: LatLng[],
+  returnToOrigin: boolean = true,
+): Promise<{ totalDistanceKm: number; source: 'google' | 'haversine' }> {
+  if (waypoints.length === 0) {
+    return { totalDistanceKm: 0, source: 'haversine' };
+  }
+
+  const destination = returnToOrigin ? origin : waypoints[waypoints.length - 1];
+  const intermediates = returnToOrigin ? waypoints : waypoints.slice(0, -1);
+
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  // Haversine fallback
+  if (!apiKey) {
+    let totalKm = 0;
+    let prev = origin;
+    for (const wp of waypoints) {
+      totalKm += haversineDistance(prev, wp);
+      prev = wp;
+    }
+    if (returnToOrigin) {
+      totalKm += haversineDistance(prev, origin);
+    }
+    return { totalDistanceKm: Math.round(totalKm * 100) / 100, source: 'haversine' };
+  }
+
+  try {
+    const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+
+    const body: Record<string, unknown> = {
+      origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+      destination: { location: { latLng: { latitude: destination.lat, longitude: destination.lng } } },
+      travelMode: 'TWO_WHEELER',
+      languageCode: 'th',
+      units: 'METRIC',
+    };
+
+    if (intermediates.length > 0) {
+      body.intermediates = intermediates.map(wp => ({
+        location: { latLng: { latitude: wp.lat, longitude: wp.lng } },
+      }));
+    }
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'routes.distanceMeters',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await res.json();
+
+    if (data.routes && data.routes.length > 0) {
+      const km = Math.round((data.routes[0].distanceMeters / 1000) * 100) / 100;
+      console.log(`[TripDistance] Google Routes API: ${km} km (${waypoints.length} waypoints, return=${returnToOrigin})`);
+      return { totalDistanceKm: km, source: 'google' };
+    }
+
+    console.warn('[TripDistance] No routes returned, falling back to Haversine');
+  } catch (error) {
+    console.error('[TripDistance] Google API error, falling back to Haversine:', error);
+  }
+
+  // Fallback
+  let totalKm = 0;
+  let prev = origin;
+  for (const wp of waypoints) {
+    totalKm += haversineDistance(prev, wp);
+    prev = wp;
+  }
+  if (returnToOrigin) {
+    totalKm += haversineDistance(prev, origin);
+  }
+  return { totalDistanceKm: Math.round(totalKm * 100) / 100, source: 'haversine' };
+}
+
+// ============================================================
 // ฟอร์แมต helpers
 // ============================================================
 export function formatDistance(km: number): string {

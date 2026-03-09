@@ -14,7 +14,10 @@ export type AuditAction =
   | 'user_created'
   | 'user_updated'
   | 'settings_updated'
-  | 'pod_uploaded';
+  | 'pod_uploaded'
+  | 'template_created'
+  | 'template_updated'
+  | 'template_deleted';
 
 interface AuditLogEntry {
   action: AuditAction;

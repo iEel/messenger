@@ -61,12 +61,23 @@ function parseDN(dn: string): { department: string; branch: string } {
  * สร้าง LDAP client
  */
 function createClient(url: string): ldap.Client {
-  return ldap.createClient({
+  const client = ldap.createClient({
     url: [url],
     tlsOptions: { rejectUnauthorized: false },
     connectTimeout: 10000,
     timeout: 10000,
+    strictDN: false, // ★ ไม่ crash เมื่อ AD ส่ง DN ที่ไม่ตรง spec
   });
+
+  // ★ จับ error จาก ldapjs parser ไม่ให้ crash ทั้ง app (uncaughtException)
+  client.on('error', (err) => {
+    console.error('[LDAP Client] Error (suppressed):', err?.message || err);
+  });
+  client.on('connectError', (err) => {
+    console.error('[LDAP Client] Connect error:', err?.message || err);
+  });
+
+  return client;
 }
 
 /**
@@ -87,16 +98,24 @@ function bindAsync(client: ldap.Client, dn: string, password: string): Promise<v
 function searchAsync(client: ldap.Client, baseDn: string, opts: ldap.SearchOptions): Promise<ldap.SearchEntry[]> {
   return new Promise((resolve, reject) => {
     const entries: ldap.SearchEntry[] = [];
-    client.search(baseDn, opts, (err, res) => {
-      if (err) return reject(err);
-      res.on('searchEntry', (entry) => entries.push(entry));
-      res.on('error', (err) => {
-        // ★ ldapjs parser errors ไม่ควร crash ทั้ง app — resolve ด้วย entries ที่ได้จนถึงตอนนี้
-        console.error('[LDAP Search] Error during search (returning partial results):', err.message);
-        resolve(entries);
+    try {
+      client.search(baseDn, opts, (err, res) => {
+        if (err) return reject(err);
+        res.on('searchEntry', (entry) => {
+          try {
+            entries.push(entry);
+          } catch { /* skip bad entry */ }
+        });
+        res.on('error', (err) => {
+          // ★ ldapjs parser errors — คืน entries ที่ได้แล้ว
+          console.error('[LDAP Search] Error during search (returning partial results):', err?.message);
+          resolve(entries);
+        });
+        res.on('end', () => resolve(entries));
       });
-      res.on('end', () => resolve(entries));
-    });
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
@@ -270,12 +289,12 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
     // 1. Bind ด้วย service account
     await bindAsync(client, bindDn, bindPw);
 
-    // 2. ดึง user ทั้งหมดจาก AD (paged เพื่อไม่ให้ parser ล้น)
+    // 2. ดึง user ทั้งหมดจาก AD
     const entries = await searchAsync(client, settings.baseDn, {
       filter: '(&(objectClass=user)(objectCategory=person))',
       scope: 'sub',
       attributes: ['cn', 'employeeID', 'mail', 'company', 'distinguishedName', 'userPrincipalName', 'sAMAccountName'],
-      paged: true,
+      sizeLimit: 1000,
     });
 
     // สร้าง Set ของ AD usernames (sAMAccountName / UPN prefix)

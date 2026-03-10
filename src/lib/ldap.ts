@@ -315,22 +315,54 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
   const client = createClient(settings.url);
 
   try {
-    // 1. Bind ด้วย service account
+    // 1. ดึง AD users จาก DB ก่อน (เฉพาะคนที่เป็น AD user)
+    const dbAdUsers = await query<{
+      Id: number; FullName: string; Email: string; Department: string;
+      AdUsername: string; IsActive: boolean; EmployeeId: string;
+    }[]>(
+      `SELECT Id, FullName, Email, Department, AdUsername, IsActive, EmployeeId
+       FROM Users
+       WHERE AdUsername IS NOT NULL OR PasswordHash = 'AD_USER_NO_LOCAL_PASSWORD'`
+    );
+
+    if (dbAdUsers.length === 0) {
+      result.message = 'ไม่มี AD User ในระบบ ไม่ต้องดึงข้อมูลจาก LDAP';
+      return result;
+    }
+
+    // รวบรวม username ที่ต้องค้นหา
+    const usernamesToSearch = Array.from(new Set(
+      dbAdUsers.map(u => (u.AdUsername || u.EmployeeId || '').toLowerCase()).filter(Boolean)
+    ));
+
+    // 2. Bind ด้วย service account
     await bindAsync(client, bindDn, bindPw);
 
-    // 2. ดึง user ทั้งหมดจาก AD
-    const entries = await searchAsync(client, settings.baseDn, {
-      filter: '(&(objectClass=user)(objectCategory=person))',
-      scope: 'sub',
-      attributes: ['cn', 'employeeID', 'mail', 'company', 'distinguishedName', 'userPrincipalName', 'sAMAccountName'],
-      sizeLimit: 1000,
-    });
+    // 3. ค้นหาใน AD โดยแบ่งเป็นชุดๆ ละ 50 คน (ป้องกัน filter ยาวเกิน + กัน parser ล้น)
+    const chunkSize = 50;
+    const allEntries: ldap.SearchEntry[] = [];
 
-    // สร้าง Set ของ AD usernames (sAMAccountName / UPN prefix)
+    for (let i = 0; i < usernamesToSearch.length; i += chunkSize) {
+      const chunk = usernamesToSearch.slice(i, i + chunkSize);
+      
+      // สร้าง filter: (|(sAMAccountName=a)(userPrincipalName=a@*)(sAMAccountName=b)...)
+      const userFilters = chunk.map(u => `(sAMAccountName=${u})(userPrincipalName=${u}@*)`).join('');
+      const filter = `(&(objectClass=user)(objectCategory=person)(|${userFilters}))`;
+
+      const entries = await searchAsync(client, settings.baseDn, {
+        filter,
+        scope: 'sub',
+        attributes: ['cn', 'employeeID', 'mail', 'company', 'distinguishedName', 'userPrincipalName', 'sAMAccountName'],
+        sizeLimit: 100, // แค่ 50-100 คนต่อรอบ ไม่มีปัญหาเรื่อง buffer แน่นอน
+      });
+      allEntries.push(...entries);
+    }
+
+    // สร้าง Set ของ AD usernames ที่เจอใน AD (sAMAccountName / UPN prefix)
     const adUsernames = new Set<string>();
     const adUserMap = new Map<string, { cn: string; mail: string; department: string }>();
 
-    for (const entry of entries) {
+    for (const entry of allEntries) {
       try {
         const attrs: Record<string, string> = {};
 
@@ -370,7 +402,6 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
           });
         }
       } catch (parseErr) {
-        // ★ entry ที่ parse ไม่ได้ → ข้าม ไม่ crash ทั้ง sync
         console.warn('[AD Sync] Skip entry (parse error):', parseErr);
         continue;
       }
@@ -378,23 +409,15 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
 
     result.synced = adUsernames.size;
 
-    // ★★★ SAFEGUARD: ถ้า AD ส่ง 0 users กลับมา = search ล้มเหลว → ห้าม disable ใครทั้งนั้น
-    if (adUsernames.size === 0) {
-      result.message = 'AD search ส่ง 0 users — ข้าม disable เพื่อป้องกัน false positive (อาจเป็น LDAP error)';
+    // ★★★ SAFEGUARD: ถ้าค้นหาทั้งหมดแล้วได้ 0 แต่ในระบบมีพนักงานเยอะมาก อาจเกิดจาก LDAP error กลางทาง
+    // (แต่ถ้าระบบเพิ่งมี 1-2 คนแล้วโดนลบหมด AD จริง ก็อาจเป็น 0 ได้)
+    // ตรงนี้เราไว้ใจได้มากขึ้นเพราะแบ่งดึงทีละ 50 คน โอกาส parser พังแทบไม่มีแล้ว
+    if (adUsernames.size === 0 && usernamesToSearch.length > 5) {
+      result.message = 'AD search ส่ง 0 users (ทั้งที่ค้นหาจากหลายคน) — ข้าม disable เพื่อป้องกัน false positive';
       console.warn(`[AD Sync] ${result.message}`);
       result.success = false;
       return result;
     }
-
-    // 3. ดึง AD users จาก DB (มี AdUsername หรือ PasswordHash = AD marker)
-    const dbAdUsers = await query<{
-      Id: number; FullName: string; Email: string; Department: string;
-      AdUsername: string; IsActive: boolean; EmployeeId: string;
-    }[]>(
-      `SELECT Id, FullName, Email, Department, AdUsername, IsActive, EmployeeId
-       FROM Users
-       WHERE AdUsername IS NOT NULL OR PasswordHash = 'AD_USER_NO_LOCAL_PASSWORD'`
-    );
 
     for (const dbUser of dbAdUsers) {
       const adUsername = (dbUser.AdUsername || dbUser.EmployeeId || '').toLowerCase();

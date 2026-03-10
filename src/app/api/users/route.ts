@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const role = searchParams.get('role');
     const search = searchParams.get('search');
+    const active = searchParams.get('active'); // ★ 'true' | 'false' | null (all)
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
@@ -21,6 +22,13 @@ export async function GET(request: NextRequest) {
     if (role && role !== 'all') {
       whereClause += ' AND Role = @role';
       params.role = role;
+    }
+
+    // ★ Filter by IsActive
+    if (active === 'true') {
+      whereClause += ' AND IsActive = 1';
+    } else if (active === 'false') {
+      whereClause += ' AND IsActive = 0';
     }
 
     if (search) {

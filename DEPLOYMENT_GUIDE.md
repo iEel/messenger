@@ -490,6 +490,29 @@ nc -zv <DB_SERVER_IP> 1433
 nc -zv <LDAP_SERVER_IP> 389
 ```
 
+### ตรวจสอบ AD Sync
+
+```bash
+# ดู AD Sync log
+pm2 logs messenger | grep "AD Sync"
+# → [AD Sync] Auto-sync starting...
+# → [AD Sync] Sync สำเร็จ: ตรวจ 150 AD users, disabled 2, updated 3
+
+# Trigger sync manual (admin only)
+curl -X POST https://messenger.yourdomain.com/api/ad-sync \
+  -H "Cookie: authjs.session-token=<admin-token>"
+
+# ดูสถานะ sync ล่าสุด
+curl https://messenger.yourdomain.com/api/ad-sync \
+  -H "Cookie: authjs.session-token=<admin-token>"
+```
+
+> 💡 **AD Sync ทำงานอัตโนมัติ:**
+> - ครั้งแรก 30 วินาทีหลัง server start
+> - หลังจากนั้นทุก 6 ชั่วโมง
+> - User ที่ถูกลบ/disable ใน AD → ถูก disable ใน app อัตโนมัติ
+> - Session ของ user ที่ถูก disable → หมดอายุภายใน 5 นาที (IsActive check)
+
 ---
 
 ## 11. การอัปเดตระบบ
@@ -552,6 +575,9 @@ chmod +x /var/www/messenger/deploy.sh
 | Upload ไม่ได้ | permission | `chown -R $USER:$USER uploads/` |
 | Tunnel offline | cloudflared ไม่ทำงาน | `sudo systemctl restart cloudflared` |
 | Build ล้มเหลว | memory ไม่พอ | เพิ่ม swap: `sudo fallocate -l 2G /swapfile` |
+| User ยัง login ได้หลัง disable | IsActive cache 5 นาที | รอ 5 นาที หรือ restart app: `pm2 restart messenger` |
+| AD Sync ไม่ทำงาน | LDAP ไม่ได้เปิดใน Settings | เปิด LDAP ในหน้าตั้งค่า + ตรวจสอบ `LDAP_BIND_DN` |
+| AD Sync ไม่พบ user | Base DN ไม่ถูกต้อง | ตรวจสอบ Base DN ในหน้าตั้งค่า LDAP |
 
 ### ดู Logs
 
@@ -606,4 +632,4 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ---
 
 > 📅 สร้างเมื่อ: 8 มีนาคม 2569
-> 📝 เวอร์ชัน: 1.0
+> 📝 เวอร์ชัน: 1.1 (อัปเดต: 10 มีนาคม 2569 — เพิ่ม AD Sync + IsActive check)

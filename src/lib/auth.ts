@@ -36,6 +36,30 @@ declare module 'next-auth' {
   }
 }
 
+// ★ In-memory cache สำหรับเช็ค IsActive (ไม่ต้อง query DB ทุก request)
+const activeCache = new Map<string, { active: boolean; checkedAt: number }>();
+const ACTIVE_CHECK_INTERVAL = 5 * 60 * 1000; // เช็คทุก 5 นาที
+
+async function isUserActive(userId: string): Promise<boolean> {
+  const cached = activeCache.get(userId);
+  if (cached && Date.now() - cached.checkedAt < ACTIVE_CHECK_INTERVAL) {
+    return cached.active;
+  }
+
+  try {
+    const rows = await query<{ IsActive: boolean }[]>(
+      'SELECT IsActive FROM Users WHERE Id = @id',
+      { id: parseInt(userId) }
+    );
+    const active = rows.length > 0 && rows[0].IsActive;
+    activeCache.set(userId, { active, checkedAt: Date.now() });
+    return active;
+  } catch {
+    // ถ้า query ไม่ได้ ให้ใช้ค่า cache เดิม หรือ default true (ไม่ block user)
+    return cached?.active ?? true;
+  }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   providers: [
@@ -191,10 +215,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.fullName = user.fullName;
         token.role = user.role;
         token.department = user.department;
+        token.lastChecked = Date.now();
       }
+
+      // ★ เช็ค IsActive ทุก 5 นาที — ถ้า admin disable → force logout
+      if (token.id) {
+        const lastChecked = (token.lastChecked as number) || 0;
+        if (Date.now() - lastChecked > ACTIVE_CHECK_INTERVAL) {
+          const active = await isUserActive(token.id as string);
+          if (!active) {
+            console.log(`[Auth] User ${token.id} disabled — forcing logout`);
+            return {} as typeof token; // empty token → redirect to login
+          }
+          token.lastChecked = Date.now();
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
+      if (!token.id) {
+        // ★ token ถูก clear (user disabled) → session ว่าง
+        return { ...session, user: undefined as unknown as typeof session.user };
+      }
       session.user.id = token.id as string;
       session.user.employeeId = token.employeeId as string;
       session.user.fullName = token.fullName as string;

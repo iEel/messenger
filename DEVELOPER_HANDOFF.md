@@ -119,6 +119,7 @@ d:\Antigravity\messenger\
 │   │   │   └── messenger/             ← Hub แมส + ส่งเอกสาร + แจ้งปัญหา + ★ Drag&Drop + Smart Routing
 │   │   ├── api/
 │   │   │   ├── auth/[...nextauth]/    ← NextAuth handler
+│   │   │   ├── ad-sync/               ← ★ AD Sync API (GET status / POST trigger)
 │   │   │   ├── analytics/             ← API รายงาน
 │   │   │   ├── distance/              ← ★ API คำนวณระยะทาง (Routes API v2)
 │   │   │   ├── maps-resolve/          ← ★ Resolve short URL (goo.gl)
@@ -129,7 +130,7 @@ d:\Antigravity\messenger\
 │   │   │   ├── trips/                 ← เริ่ม/จบรอบวิ่ง + ★ Loop Closing
 │   │   │   ├── upload/                ← ★ อัปโหลดไฟล์ POD (photo/signature)
 │   │   │   ├── uploads/[...path]/     ← ★ Serve ไฟล์อัปโหลด (auth protected)
-│   │   │   └── users/                 ← CRUD ผู้ใช้
+│   │   │   └── users/                 ← CRUD ผู้ใช้ + ★ ?active= filter
 │   │   ├── globals.css
 │   │   ├── layout.tsx                 ← Root layout + PWA manifest + SW registration
 │   │   └── page.tsx                   ← Redirect → /login
@@ -147,7 +148,8 @@ d:\Antigravity\messenger\
 │   │   └── ThemeProvider.tsx          ← Dark/Light mode
 │   │
 │   └── lib/
-│       ├── auth.ts                    ← NextAuth config
+│       ├── auth.ts                    ← NextAuth config + ★ IsActive session check (5-min cache)
+│       ├── audit.ts                   ← ★ Audit log helper
 │       ├── date-utils.ts              ← ★ Format วันเวลา (แก้ timezone + ปี ค.ศ.)
 │       ├── db.ts                      ← SQL Server connection
 │       ├── distance.ts                ← ★ Routes API v2 (TWO_WHEELER) + Haversine + Route Optimization
@@ -253,11 +255,17 @@ erDiagram
 ### 6.2 Users
 | Method | Path | คำอธิบาย |
 |--------|------|----------|
-| GET | `/api/users` | รายชื่อ users ทั้งหมด (filter: `?role=`, `?search=`) |
+| GET | `/api/users` | รายชื่อ users (filter: `?role=`, `?search=`, ★`?active=true/false`) |
 | POST | `/api/users` | สร้าง user ใหม่ |
 | GET | `/api/users/[id]` | ดึงข้อมูล user |
 | PATCH | `/api/users/[id]` | แก้ไข user |
 | GET | `/api/messengers` | ดึงรายชื่อแมสเซ็นเจอร์ (active only) |
+
+### 6.10 AD Sync ★ (ใหม่)
+| Method | Path | คำอธิบาย |
+|--------|------|----------|
+| GET | `/api/ad-sync` | ดูสถานะ sync ล่าสุด (admin only) |
+| POST | `/api/ad-sync` | ★ Trigger sync manual — เทียบ AD users กับ DB (admin only) |
 
 ### 6.3 Tasks
 | Method | Path | คำอธิบาย |
@@ -639,6 +647,23 @@ cancelled                         issue → return / reschedule
   - `email-action.test.ts` (14 tests) — HMAC token สร้าง/ยืนยัน/หมดอายุ/ถูกแก้ไข
   - `route-cache.test.ts` (11 tests) — TTL expiry, 500-entry limit, key generation
   - `rate-limit.test.ts` (11 tests) — Sliding window, block/unblock, login แยก general, stats
+
+### Phase 13 — User Management & AD Sync ★ (ใหม่)
+- ★ **IsActive Session Check** — เช็ค `IsActive` ใน JWT callback ทุก 5 นาที
+  - In-memory cache ลด DB load (ไม่ query ทุก request)
+  - ถ้า admin disable user → session ใช้ไม่ได้ทันที (ภายใน 5 นาที) → redirect `/login`
+  - ไฟล์: `src/lib/auth.ts` — `isUserActive()` + JWT callback
+- ★ **Admin Users Status Filter** — dropdown กรองสถานะ (ใช้งาน/ปิดใช้งาน/ทั้งหมด)
+  - Default แสดงเฉพาะ Active — ดูคนที่ปิดใช้งานได้โดยเปลี่ยน dropdown
+  - API รองรับ `?active=true|false` parameter
+  - ไฟล์: `src/app/(main)/admin/users/page.tsx`, `src/app/api/users/route.ts`
+- ★ **AD Sync Cron Job** — ซิงค์ข้อมูล user จาก Active Directory อัตโนมัติ
+  - `ldapSyncUsers()` ใน `src/lib/ldap.ts` — ดึง AD users ทั้งหมด เทียบกับ DB
+  - AD user ที่ถูกลบ/disable ใน AD → `IsActive = 0` ใน DB อัตโนมัติ
+  - AD user ที่ข้อมูลเปลี่ยน (ชื่อ, email, แผนก) → update DB อัตโนมัติ
+  - API: `POST /api/ad-sync` (manual trigger, admin only) + `GET /api/ad-sync` (ดูสถานะ)
+  - Auto-sync ทุก 6 ชั่วโมง (เมื่อ LDAP enabled) + ครั้งแรก 30 วิหลัง server start
+  - ไฟล์: `src/lib/ldap.ts`, `src/app/api/ad-sync/route.ts`
 
 ---
 

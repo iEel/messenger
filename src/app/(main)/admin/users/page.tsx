@@ -16,6 +16,7 @@ import {
   ChevronRight,
   UserCircle,
   Shield,
+  UserCheck,
 } from 'lucide-react';
 import { ROLE_CONFIG, type User, type UserRole } from '@/lib/types';
 import { formatDateTimeShort } from '@/lib/date-utils';
@@ -26,6 +27,7 @@ export default function UsersListPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [activeFilter, setActiveFilter] = useState('true'); // ★ default: แสดงเฉพาะ Active
   const [isLoading, setIsLoading] = useState(true);
   const [actionMenu, setActionMenu] = useState<number | null>(null);
 
@@ -36,6 +38,7 @@ export default function UsersListPage() {
         page: String(page),
         limit: '20',
         ...(roleFilter !== 'all' && { role: roleFilter }),
+        ...(activeFilter !== 'all' && { active: activeFilter }),
         ...(search && { search }),
       });
       const res = await fetch(`/api/users?${params}`);
@@ -47,7 +50,7 @@ export default function UsersListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, roleFilter, search]);
+  }, [page, roleFilter, activeFilter, search]);
 
   useEffect(() => {
     fetchUsers();
@@ -144,6 +147,23 @@ export default function UsersListPage() {
             <option value="requester">พนักงาน</option>
             <option value="dispatcher">หัวหน้าแมสเซ็นเจอร์</option>
             <option value="messenger">แมสเซ็นเจอร์</option>
+          </select>
+        </div>
+        {/* ★ Status Filter */}
+        <div className="relative">
+          <UserCheck size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400" />
+          <select
+            id="active-filter"
+            value={activeFilter}
+            onChange={(e) => { setActiveFilter(e.target.value); setPage(1); }}
+            className="pl-10 pr-8 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700
+                       bg-white dark:bg-surface-800 text-surface-800 dark:text-white text-sm
+                       focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+                       transition-all duration-200 appearance-none cursor-pointer"
+          >
+            <option value="true">ใช้งาน</option>
+            <option value="false">ปิดใช้งาน</option>
+            <option value="all">ทั้งหมด</option>
           </select>
         </div>
       </div>

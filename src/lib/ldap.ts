@@ -223,3 +223,185 @@ export async function ldapTestConnection(): Promise<{ success: boolean; message:
     try { client.unbind(); } catch { /* ignore */ }
   }
 }
+
+// ============================================================
+// ★ AD Sync — ดึง user จาก AD ทั้งหมด เทียบกับ DB
+// ============================================================
+
+interface AdSyncResult {
+  success: boolean;
+  message: string;
+  synced: number;      // user ที่ตรวจเทียบ
+  disabled: number;    // user ที่ถูก disable (ไม่อยู่ใน AD แล้ว)
+  updated: number;     // user ที่ข้อมูลถูก update
+  errors: string[];    // errors ระหว่าง sync
+}
+
+/**
+ * ★ Sync AD users กับ DB
+ * - ดึง user ทั้งหมดจาก AD (via service account)
+ * - เทียบกับ AD users ใน DB (PasswordHash = 'AD_USER_NO_LOCAL_PASSWORD' หรือ AdUsername != NULL)
+ * - AD user ที่ไม่อยู่ใน AD แล้ว → set IsActive = 0
+ * - AD user ที่ข้อมูลเปลี่ยน (ชื่อ, email, แผนก) → update DB
+ */
+export async function ldapSyncUsers(): Promise<AdSyncResult> {
+  const result: AdSyncResult = { success: false, message: '', synced: 0, disabled: 0, updated: 0, errors: [] };
+
+  const settings = await getLdapSettings();
+  if (!settings.enabled || !settings.url || !settings.baseDn) {
+    result.message = 'LDAP ไม่ได้เปิดใช้งาน หรือยังไม่ได้ตั้งค่า';
+    return result;
+  }
+
+  const bindDn = process.env.LDAP_BIND_DN;
+  const bindPw = process.env.LDAP_BIND_PASSWORD;
+  if (!bindDn || !bindPw) {
+    result.message = 'ไม่มี LDAP_BIND_DN / LDAP_BIND_PASSWORD ใน .env';
+    return result;
+  }
+
+  const client = createClient(settings.url);
+
+  try {
+    // 1. Bind ด้วย service account
+    await bindAsync(client, bindDn, bindPw);
+
+    // 2. ดึง user ทั้งหมดจาก AD
+    const entries = await searchAsync(client, settings.baseDn, {
+      filter: '(&(objectClass=user)(objectCategory=person))',
+      scope: 'sub',
+      attributes: ['cn', 'employeeID', 'mail', 'company', 'distinguishedName', 'userPrincipalName', 'sAMAccountName'],
+      sizeLimit: 5000,
+    });
+
+    // สร้าง Set ของ AD usernames (sAMAccountName / UPN prefix)
+    const adUsernames = new Set<string>();
+    const adUserMap = new Map<string, { cn: string; mail: string; department: string }>();
+
+    for (const entry of entries) {
+      const attrs: Record<string, string> = {};
+
+      // ldapjs v3: entry.attributes
+      const rawAttrs = ((entry as unknown as Record<string, unknown>).attributes || []) as { type: string; values: string[] }[];
+      if (Array.isArray(rawAttrs)) {
+        for (const a of rawAttrs) {
+          if (a.type && a.values?.[0] != null) {
+            attrs[a.type.toLowerCase()] = String(a.values[0]);
+          }
+        }
+      }
+
+      // ldapjs v2: entry.object
+      const obj = ((entry as unknown as Record<string, unknown>).object || {}) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(obj)) {
+        if (!attrs[k.toLowerCase()] && v) {
+          attrs[k.toLowerCase()] = String(v);
+        }
+      }
+
+      // Extract username
+      const upn = attrs['userprincipalname'] || '';
+      const sam = attrs['samaccountname'] || '';
+      const username = sam || upn.split('@')[0] || '';
+
+      if (username) {
+        adUsernames.add(username.toLowerCase());
+
+        const dn = attrs['distinguishedname'] || '';
+        const { department } = parseDN(dn);
+
+        adUserMap.set(username.toLowerCase(), {
+          cn: attrs['cn'] || username,
+          mail: attrs['mail'] || '',
+          department,
+        });
+      }
+    }
+
+    result.synced = adUsernames.size;
+
+    // 3. ดึง AD users จาก DB (มี AdUsername หรือ PasswordHash = AD marker)
+    const dbAdUsers = await query<{
+      Id: number; FullName: string; Email: string; Department: string;
+      AdUsername: string; IsActive: boolean; EmployeeId: string;
+    }[]>(
+      `SELECT Id, FullName, Email, Department, AdUsername, IsActive, EmployeeId
+       FROM Users
+       WHERE AdUsername IS NOT NULL OR PasswordHash = 'AD_USER_NO_LOCAL_PASSWORD'`
+    );
+
+    for (const dbUser of dbAdUsers) {
+      const adUsername = (dbUser.AdUsername || dbUser.EmployeeId || '').toLowerCase();
+
+      if (!adUsername) continue;
+
+      if (!adUsernames.has(adUsername)) {
+        // ★ User ไม่อยู่ใน AD แล้ว → disable
+        if (dbUser.IsActive) {
+          try {
+            await query(
+              'UPDATE Users SET IsActive = 0, UpdatedAt = GETDATE() WHERE Id = @id',
+              { id: dbUser.Id }
+            );
+            result.disabled++;
+            console.log(`[AD Sync] Disabled: ${dbUser.FullName} (${adUsername}) — ไม่พบใน AD`);
+          } catch (err) {
+            result.errors.push(`Disable ${dbUser.FullName}: ${err}`);
+          }
+        }
+      } else {
+        // ★ User ยังอยู่ใน AD → เช็คข้อมูลที่เปลี่ยน
+        const adInfo = adUserMap.get(adUsername);
+        if (adInfo && dbUser.IsActive) {
+          const changes: string[] = [];
+          const updateFields: string[] = [];
+          const params: Record<string, unknown> = { id: dbUser.Id };
+
+          if (adInfo.cn && adInfo.cn !== dbUser.FullName) {
+            updateFields.push('FullName = @fullName');
+            params.fullName = adInfo.cn;
+            changes.push(`ชื่อ: ${dbUser.FullName} → ${adInfo.cn}`);
+          }
+          if (adInfo.mail && adInfo.mail !== (dbUser.Email || '')) {
+            updateFields.push('Email = @email');
+            params.email = adInfo.mail;
+            changes.push(`email: ${dbUser.Email} → ${adInfo.mail}`);
+          }
+          if (adInfo.department && adInfo.department !== (dbUser.Department || '')) {
+            updateFields.push('Department = @department');
+            params.department = adInfo.department;
+            changes.push(`แผนก: ${dbUser.Department} → ${adInfo.department}`);
+          }
+
+          if (updateFields.length > 0) {
+            try {
+              updateFields.push('UpdatedAt = GETDATE()');
+              await query(
+                `UPDATE Users SET ${updateFields.join(', ')} WHERE Id = @id`,
+                params
+              );
+              result.updated++;
+              console.log(`[AD Sync] Updated: ${dbUser.FullName} — ${changes.join(', ')}`);
+            } catch (err) {
+              result.errors.push(`Update ${dbUser.FullName}: ${err}`);
+            }
+          }
+        }
+      }
+    }
+
+    result.success = true;
+    result.message = `Sync สำเร็จ: ตรวจ ${result.synced} AD users, disabled ${result.disabled}, updated ${result.updated}`;
+    console.log(`[AD Sync] ${result.message}`);
+    return result;
+
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    result.message = `AD Sync error: ${errMsg}`;
+    console.error(`[AD Sync] ${result.message}`);
+    return result;
+  } finally {
+    try { client.unbind(); } catch { /* ignore */ }
+  }
+}
+

@@ -1,6 +1,32 @@
 import ldap from 'ldapjs';
 import { query } from './db';
 
+// ★ ldapjs มี bug ภายใน — parser throw TypeError ตอน parse AD response
+// Error เกิดก่อน event emit → client.on('error') จับไม่ได้ → ต้องจับที่ process level
+if (typeof process !== 'undefined' && !((globalThis as Record<string, unknown>).__ldapErrorHandlerInstalled)) {
+  (globalThis as Record<string, unknown>).__ldapErrorHandlerInstalled = true;
+
+  process.on('uncaughtException', (err) => {
+    const msg = err?.message || '';
+    const stack = err?.stack || '';
+
+    // เฉพาะ ldapjs errors เท่านั้น (ดูจาก stack trace)
+    const isLdapError =
+      (msg.includes('toLowerCase') && stack.includes('ldap')) ||
+      msg.includes('Parser error for') ||
+      (msg.includes('Expected 0x') && stack.includes('readTag'));
+
+    if (isLdapError) {
+      console.error('[LDAP] Suppressed internal parser error:', msg);
+      return; // ไม่ crash
+    }
+
+    // Error อื่น → log แล้วปล่อย PM2 restart
+    console.error('[Uncaught Exception]', err);
+    process.exit(1);
+  });
+}
+
 interface LdapSettings {
   url: string;
   domain: string;

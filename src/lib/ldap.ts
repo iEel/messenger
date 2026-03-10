@@ -90,7 +90,11 @@ function searchAsync(client: ldap.Client, baseDn: string, opts: ldap.SearchOptio
     client.search(baseDn, opts, (err, res) => {
       if (err) return reject(err);
       res.on('searchEntry', (entry) => entries.push(entry));
-      res.on('error', (err) => reject(err));
+      res.on('error', (err) => {
+        // ★ ldapjs parser errors ไม่ควร crash ทั้ง app — resolve ด้วย entries ที่ได้จนถึงตอนนี้
+        console.error('[LDAP Search] Error during search (returning partial results):', err.message);
+        resolve(entries);
+      });
       res.on('end', () => resolve(entries));
     });
   });
@@ -266,12 +270,12 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
     // 1. Bind ด้วย service account
     await bindAsync(client, bindDn, bindPw);
 
-    // 2. ดึง user ทั้งหมดจาก AD
+    // 2. ดึง user ทั้งหมดจาก AD (paged เพื่อไม่ให้ parser ล้น)
     const entries = await searchAsync(client, settings.baseDn, {
       filter: '(&(objectClass=user)(objectCategory=person))',
       scope: 'sub',
       attributes: ['cn', 'employeeID', 'mail', 'company', 'distinguishedName', 'userPrincipalName', 'sAMAccountName'],
-      sizeLimit: 5000,
+      paged: true,
     });
 
     // สร้าง Set ของ AD usernames (sAMAccountName / UPN prefix)
@@ -279,42 +283,48 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
     const adUserMap = new Map<string, { cn: string; mail: string; department: string }>();
 
     for (const entry of entries) {
-      const attrs: Record<string, string> = {};
+      try {
+        const attrs: Record<string, string> = {};
 
-      // ldapjs v3: entry.attributes
-      const rawAttrs = ((entry as unknown as Record<string, unknown>).attributes || []) as { type: string; values: string[] }[];
-      if (Array.isArray(rawAttrs)) {
-        for (const a of rawAttrs) {
-          if (a.type && a.values?.[0] != null) {
-            attrs[a.type.toLowerCase()] = String(a.values[0]);
+        // ldapjs v3: entry.attributes
+        const rawAttrs = ((entry as unknown as Record<string, unknown>).attributes || []) as { type?: string; values?: string[] }[];
+        if (Array.isArray(rawAttrs)) {
+          for (const a of rawAttrs) {
+            if (a && typeof a.type === 'string' && a.values?.[0] != null) {
+              attrs[a.type.toLowerCase()] = String(a.values[0]);
+            }
           }
         }
-      }
 
-      // ldapjs v2: entry.object
-      const obj = ((entry as unknown as Record<string, unknown>).object || {}) as Record<string, unknown>;
-      for (const [k, v] of Object.entries(obj)) {
-        if (!attrs[k.toLowerCase()] && v) {
-          attrs[k.toLowerCase()] = String(v);
+        // ldapjs v2: entry.object
+        const obj = ((entry as unknown as Record<string, unknown>).object || {}) as Record<string, unknown>;
+        for (const [k, v] of Object.entries(obj)) {
+          if (k && typeof k === 'string' && !attrs[k.toLowerCase()] && v != null) {
+            attrs[k.toLowerCase()] = String(v);
+          }
         }
-      }
 
-      // Extract username
-      const upn = attrs['userprincipalname'] || '';
-      const sam = attrs['samaccountname'] || '';
-      const username = sam || upn.split('@')[0] || '';
+        // Extract username
+        const upn = attrs['userprincipalname'] || '';
+        const sam = attrs['samaccountname'] || '';
+        const username = sam || upn.split('@')[0] || '';
 
-      if (username) {
-        adUsernames.add(username.toLowerCase());
+        if (username) {
+          adUsernames.add(username.toLowerCase());
 
-        const dn = attrs['distinguishedname'] || '';
-        const { department } = parseDN(dn);
+          const dn = attrs['distinguishedname'] || '';
+          const { department } = parseDN(dn);
 
-        adUserMap.set(username.toLowerCase(), {
-          cn: attrs['cn'] || username,
-          mail: attrs['mail'] || '',
-          department,
-        });
+          adUserMap.set(username.toLowerCase(), {
+            cn: attrs['cn'] || username,
+            mail: attrs['mail'] || '',
+            department,
+          });
+        }
+      } catch (parseErr) {
+        // ★ entry ที่ parse ไม่ได้ → ข้าม ไม่ crash ทั้ง sync
+        console.warn('[AD Sync] Skip entry (parse error):', parseErr);
+        continue;
       }
     }
 

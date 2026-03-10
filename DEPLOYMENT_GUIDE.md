@@ -498,20 +498,102 @@ pm2 logs messenger | grep "AD Sync"
 # → [AD Sync] Auto-sync starting...
 # → [AD Sync] Sync สำเร็จ: ตรวจ 150 AD users, disabled 2, updated 3
 
-# Trigger sync manual (admin only)
-curl -X POST https://messenger.yourdomain.com/api/ad-sync \
-  -H "Cookie: authjs.session-token=<admin-token>"
-
 # ดูสถานะ sync ล่าสุด
-curl https://messenger.yourdomain.com/api/ad-sync \
-  -H "Cookie: authjs.session-token=<admin-token>"
+curl -s http://localhost:3000/api/ad-sync \
+  -H "Cookie: authjs.session-token=<admin-token>" | jq
 ```
 
-> 💡 **AD Sync ทำงานอัตโนมัติ:**
-> - ครั้งแรก 30 วินาทีหลัง server start
-> - หลังจากนั้นทุก 6 ชั่วโมง
-> - User ที่ถูกลบ/disable ใน AD → ถูก disable ใน app อัตโนมัติ
-> - Session ของ user ที่ถูก disable → หมดอายุภายใน 5 นาที (IsActive check)
+### ตั้งค่า AD Sync Cron Job
+
+AD Sync มี **2 ชั้น** ทำงานร่วมกัน:
+
+#### ชั้นที่ 1 — Built-in Auto Sync (ภายใน App)
+
+ทำงานอัตโนมัติเมื่อ LDAP enabled ใน Settings:
+- ครั้งแรก 30 วินาทีหลัง server start
+- หลังจากนั้นทุก 6 ชั่วโมง
+- ไม่ต้องตั้งค่าเพิ่ม — ทำงานใน process เดียวกับ Next.js
+
+> ⚠️ **ข้อจำกัด:** ถ้า app restart (PM2 reload / deploy) จะเริ่มนับ 6 ชม. ใหม่
+
+#### ชั้นที่ 2 — System Cron (แนะนำ เป็น backup)
+
+สร้าง script สำหรับ trigger AD Sync ผ่าน API:
+
+```bash
+nano /var/www/messenger/ad-sync.sh
+```
+
+```bash
+#!/bin/bash
+# AD Sync — trigger ผ่าน API (ใช้ service account token)
+# วิธีหา token: login ด้วย admin แล้วดู cookie authjs.session-token
+
+LOG_FILE="/var/www/messenger/logs/ad-sync.log"
+API_URL="http://localhost:3000/api/ad-sync"
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') [AD Sync] Starting..." >> "$LOG_FILE"
+
+# เรียก API ด้วย admin session token
+RESPONSE=$(curl -s -X POST "$API_URL" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: authjs.session-token=${AD_SYNC_TOKEN}" \
+  --max-time 60)
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') [AD Sync] Result: $RESPONSE" >> "$LOG_FILE"
+```
+
+```bash
+# ให้สิทธิ์ execute
+chmod +x /var/www/messenger/ad-sync.sh
+```
+
+#### ตั้งค่า Cron Schedule
+
+```bash
+# แก้ไข crontab
+crontab -e
+```
+
+เพิ่มบรรทัด:
+
+```cron
+# AD Sync ทุก 6 ชั่วโมง (00:00, 06:00, 12:00, 18:00)
+0 */6 * * * AD_SYNC_TOKEN="<admin-session-token>" /var/www/messenger/ad-sync.sh
+
+# (optional) ล้าง log เดือนละครั้ง
+0 0 1 * * truncate -s 0 /var/www/messenger/logs/ad-sync.log
+```
+
+```bash
+# ตรวจสอบ crontab
+crontab -l
+
+# ทดสอบ script
+AD_SYNC_TOKEN="<admin-session-token>" /var/www/messenger/ad-sync.sh
+cat /var/www/messenger/logs/ad-sync.log
+```
+
+#### วิธีหา Admin Session Token
+
+```bash
+# 1. Login ในเบราว์เซอร์ด้วย admin account
+# 2. เปิด DevTools → Application → Cookies
+# 3. คัดลอกค่า authjs.session-token
+# 4. ใส่ใน AD_SYNC_TOKEN
+
+# หรือใช้ curl login:
+curl -s -c cookies.txt -X POST http://localhost:3000/api/auth/callback/credentials \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "employeeId=admin&password=<password>"
+```
+
+> 💡 **AD Sync ทำอะไรบ้าง:**
+> - ดึง user ทั้งหมดจาก AD (sAMAccountName / UPN)
+> - เทียบกับ AD users ใน DB (ดูจาก `AdUsername` column)
+> - User ที่ถูกลบ/disable ใน AD → `IsActive = 0` ใน DB อัตโนมัติ
+> - User ที่ข้อมูลเปลี่ยน (ชื่อ, email, แผนก) → update DB
+> - Session ของ user ที่ถูก disable → หมดอายุภายใน 5 นาที (IsActive check ใน JWT)
 
 ---
 

@@ -10,19 +10,22 @@ if (typeof process !== 'undefined' && !((globalThis as Record<string, unknown>).
     const msg = err?.message || '';
     const stack = err?.stack || '';
 
-    // เฉพาะ ldapjs errors เท่านั้น (ดูจาก stack trace)
+    // เฉพาะ ldapjs errors เท่านั้น (ดูจาก stack trace หรือข้อความที่เฉพาะเจาะจง)
+    // หมายเหตุ: Next.js build อาจจะ minify จนคำว่า 'ldap' หายไปจาก stack
     const isLdapError =
-      (msg.includes('toLowerCase') && stack.includes('ldap')) ||
+      msg.includes('toLowerCase') || // ldapjs .attributes[].type.toLowerCase() bug
       msg.includes('Parser error for') ||
-      (msg.includes('Expected 0x') && stack.includes('readTag'));
+      (msg.includes('Expected 0x') && stack.includes('readTag')) ||
+      stack.includes('ldap');
 
     if (isLdapError) {
-      console.error('[LDAP] Suppressed internal parser error:', msg);
-      return; // ไม่ crash
+      // แอบ log เงียบๆ ไม่ปิดแอป
+      console.error(`[LDAP] Suppressed internal parser error: ${msg.substring(0, 100)}`);
+      return; 
     }
 
-    // Error อื่น → log แล้วปล่อย PM2 restart
-    console.error('[Uncaught Exception]', err);
+    // Error อื่น (เช่น DB ขาดการเชื่อมต่อ, code ตัวเองพัง) → log แล้วปล่อย PM2 restart
+    console.error(`[Uncaught Exception - Fatal] ${msg}`, err);
     process.exit(1);
   });
 }

@@ -375,6 +375,14 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
 
     result.synced = adUsernames.size;
 
+    // ★★★ SAFEGUARD: ถ้า AD ส่ง 0 users กลับมา = search ล้มเหลว → ห้าม disable ใครทั้งนั้น
+    if (adUsernames.size === 0) {
+      result.message = 'AD search ส่ง 0 users — ข้าม disable เพื่อป้องกัน false positive (อาจเป็น LDAP error)';
+      console.warn(`[AD Sync] ${result.message}`);
+      result.success = false;
+      return result;
+    }
+
     // 3. ดึง AD users จาก DB (มี AdUsername หรือ PasswordHash = AD marker)
     const dbAdUsers = await query<{
       Id: number; FullName: string; Email: string; Department: string;

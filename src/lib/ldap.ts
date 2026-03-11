@@ -127,22 +127,36 @@ function bindAsync(client: ldap.Client, dn: string, password: string): Promise<v
 function searchAsync(client: ldap.Client, baseDn: string, opts: ldap.SearchOptions): Promise<ldap.SearchEntry[]> {
   return new Promise((resolve, reject) => {
     const entries: ldap.SearchEntry[] = [];
+    let resolved = false;
+    const done = (result: ldap.SearchEntry[]) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+
+    // ★ Timeout 30 วินาที — ถ้า search ค้าง (parser crash → ไม่มี end/error event)
+    const timer = setTimeout(() => {
+      console.warn(`[LDAP Search] Timeout 30s — returning ${entries.length} partial results`);
+      done(entries);
+    }, 30000);
+
     try {
       client.search(baseDn, opts, (err, res) => {
-        if (err) return reject(err);
+        if (err) { clearTimeout(timer); return reject(err); }
         res.on('searchEntry', (entry) => {
           try {
             entries.push(entry);
           } catch { /* skip bad entry */ }
         });
         res.on('error', (err) => {
-          // ★ ldapjs parser errors — คืน entries ที่ได้แล้ว
           console.error('[LDAP Search] Error during search (returning partial results):', err?.message);
-          resolve(entries);
+          done(entries);
         });
-        res.on('end', () => resolve(entries));
+        res.on('end', () => done(entries));
       });
     } catch (err) {
+      clearTimeout(timer);
       reject(err);
     }
   });

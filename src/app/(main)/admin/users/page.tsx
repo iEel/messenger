@@ -17,6 +17,7 @@ import {
   UserCircle,
   Shield,
   UserCheck,
+  RefreshCw,
 } from 'lucide-react';
 import { ROLE_CONFIG, type User, type UserRole } from '@/lib/types';
 import { formatDateTimeShort } from '@/lib/date-utils';
@@ -30,6 +31,8 @@ export default function UsersListPage() {
   const [activeFilter, setActiveFilter] = useState('true'); // ★ default: แสดงเฉพาะ Active
   const [isLoading, setIsLoading] = useState(true);
   const [actionMenu, setActionMenu] = useState<number | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ message: string; success: boolean } | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -86,6 +89,26 @@ export default function UsersListPage() {
     setActionMenu(null);
   };
 
+  const handleAdSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch('/api/ad-sync', { method: 'POST' });
+      const data = await res.json();
+      setSyncResult({
+        message: data.message || `ตรวจ ${data.synced} AD users, disabled ${data.disabled}, updated ${data.updated}`,
+        success: data.success !== false,
+      });
+      fetchUsers(); // refresh list
+    } catch {
+      setSyncResult({ message: 'เชื่อมต่อ AD ไม่ได้', success: false });
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncResult(null), 8000); // ซ่อนหลัง 8 วินาที
+    }
+  };
+
   const totalPages = Math.ceil(total / 20);
 
   return (
@@ -101,18 +124,46 @@ export default function UsersListPage() {
             <p className="text-sm text-surface-500 dark:text-surface-400">{total} ผู้ใช้ทั้งหมด</p>
           </div>
         </div>
-        <Link
-          href="/admin/users/new"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-white
-                     bg-gradient-to-r from-primary-600 to-primary-700 
-                     hover:from-primary-700 hover:to-primary-800
-                     shadow-lg shadow-primary-500/25 hover:shadow-xl
-                     transition-all duration-200 hover:-translate-y-0.5"
-        >
-          <Plus size={18} />
-          <span>สร้างผู้ใช้ใหม่</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            id="ad-sync-btn"
+            onClick={handleAdSync}
+            disabled={isSyncing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm
+                       border border-surface-200 dark:border-surface-700
+                       bg-white dark:bg-surface-800 text-surface-700 dark:text-surface-300
+                       hover:bg-surface-50 dark:hover:bg-surface-700
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       transition-all duration-200 cursor-pointer"
+          >
+            <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+            <span>{isSyncing ? 'กำลัง Sync...' : 'AD Sync'}</span>
+          </button>
+          <Link
+            href="/admin/users/new"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-white
+                       bg-gradient-to-r from-primary-600 to-primary-700 
+                       hover:from-primary-700 hover:to-primary-800
+                       shadow-lg shadow-primary-500/25 hover:shadow-xl
+                       transition-all duration-200 hover:-translate-y-0.5"
+          >
+            <Plus size={18} />
+            <span>สร้างผู้ใช้ใหม่</span>
+          </Link>
+        </div>
       </div>
+
+      {/* AD Sync Result Toast */}
+      {syncResult && (
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium animate-fade-in
+                        ${syncResult.success
+                          ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                          : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'}`}
+        >
+          {syncResult.success ? <CheckCircle size={16} /> : <XCircle size={16} />}
+          {syncResult.message}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">

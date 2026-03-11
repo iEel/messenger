@@ -28,6 +28,7 @@ Web Application สำหรับจัดการการส่ง/รับ
 | Styling | Tailwind CSS | v4 |
 | Database | Microsoft SQL Server | (Named Instance: `alpha`) |
 | Auth | NextAuth.js (Credentials) + bcryptjs | 5.0.0-beta.30 |
+| LDAP | ldapts (TypeScript LDAP client) | latest |
 | Icons | Lucide React | 0.577.0 |
 | DB Driver | mssql (tedious) | 12.2.0 |
 
@@ -93,6 +94,10 @@ OUTLOOK_SENDER_EMAIL=
 
 # Upload
 UPLOAD_DIR=./uploads
+
+# LDAP/AD Sync (Service Account สำหรับค้นหา AD)
+LDAP_BIND_DN=CN=ServiceAccount,OU=...,DC=domain,DC=com
+LDAP_BIND_PASSWORD=<password>
 ```
 
 ---
@@ -153,6 +158,7 @@ d:\Antigravity\messenger\
 │       ├── date-utils.ts              ← ★ Format วันเวลา (แก้ timezone + ปี ค.ศ.)
 │       ├── db.ts                      ← SQL Server connection
 │       ├── distance.ts                ← ★ Routes API v2 (TWO_WHEELER) + Haversine + Route Optimization
+│       ├── ldap.ts                    ← ★ LDAP/AD (ldapts) — authenticate, test, sync
 │       ├── route-cache.ts             ← ★ In-memory cache (ลด API calls → ประหยัดค่าใช้จ่าย)
 │       ├── email.ts                   ← ★ Email templates (6 templates incl. returned + POD link)
 │       ├── types.ts                   ← TypeScript types + STATUS_CONFIG
@@ -534,12 +540,12 @@ cancelled                         issue → return / reschedule
   - บันทึกครบ: Login, สร้าง/จ่าย/ยกเลิกใบงาน, เปลี่ยนสถานะ, สร้าง/แก้ไข/ปิดผู้ใช้, แก้ตั้งค่า, เริ่ม/จบรอบวิ่ง
   - แก้ timezone ด้วย `parseLocalDate()` — strip `Z` suffix จาก MSSQL
 - ★ **LDAP/AD Hybrid Authentication** — Login ได้ทั้ง Local User และ Active Directory
-  - `src/lib/ldap.ts` — LDAP authenticate (UPN), test connection, parse DN (แผนก/สาขาจาก OU)
+  - `src/lib/ldap.ts` — ใช้ **`ldapts`** (แทน ldapjs ที่มี parser bug กับ AD) — LDAP authenticate, test connection, sync, parse DN
   - `src/lib/auth.ts` — Hybrid login: Local → LDAP fallback + auto-create user (role = requester)
   - `src/app/api/ldap/test/route.ts` — API ทดสอบการเชื่อมต่อ LDAP
   - Settings UI: toggle เปิด/ปิด, Server URL, Domain, Base DN, ปุ่มทดสอบ
   - AD Attributes: `cn`, `employeeID`, `mail`, `company`, `distinguishedName` (parse OU)
-  - เพิ่ม column `AdUsername` เก็บ UPN prefix สำหรับ login, `EmployeeId` เก็บรหัสจาก AD
+  - เพิ่ม column `AdUsername` เก็บ sAMAccountName (login name เช่น `veerapon.l`), `EmployeeId` เก็บรหัสจาก AD
   - `.env.local`: `LDAP_BIND_DN`, `LDAP_BIND_PASSWORD` (Service Account)
 - ★ **User Management UI Fix** — dropdown เมนูจุด 3 จุด
   - ปิดอัตโนมัติเมื่อคลิกที่อื่น (click-outside listener)
@@ -657,13 +663,16 @@ cancelled                         issue → return / reschedule
   - Default แสดงเฉพาะ Active — ดูคนที่ปิดใช้งานได้โดยเปลี่ยน dropdown
   - API รองรับ `?active=true|false` parameter
   - ไฟล์: `src/app/(main)/admin/users/page.tsx`, `src/app/api/users/route.ts`
-- ★ **AD Sync Cron Job** — ซิงค์ข้อมูล user จาก Active Directory อัตโนมัติ
-  - `ldapSyncUsers()` ใน `src/lib/ldap.ts` — ดึง AD users ทั้งหมด เทียบกับ DB
+- ★ **AD Sync** — ซิงค์ข้อมูล user จาก Active Directory อัตโนมัติ
+  - **Library:** `ldapts` (เปลี่ยนจาก `ldapjs` ที่มี parser bug กับ AD server ทำให้ search crash)
+  - **วิธีทำงาน:** ดึงรายชื่อ AD users จาก DB ก่อน → ค้นหาใน AD เฉพาะคนเหล่านั้น (ทีละ 50 คน)
   - AD user ที่ถูกลบ/disable ใน AD → `IsActive = 0` ใน DB อัตโนมัติ
   - AD user ที่ข้อมูลเปลี่ยน (ชื่อ, email, แผนก) → update DB อัตโนมัติ
+  - **Safeguard:** ถ้า search ได้ 0 users → ข้ามการ disable ทั้งหมด (ป้องกัน false positive จาก LDAP error)
   - API: `POST /api/ad-sync` (manual trigger, admin only) + `GET /api/ad-sync` (ดูสถานะ)
+  - **UI:** ปุ่ม "AD Sync" บนหน้าจัดการผู้ใช้ + loading spinner + toast ผลลัพธ์
   - Auto-sync ทุก 6 ชั่วโมง (เมื่อ LDAP enabled) + ครั้งแรก 30 วิหลัง server start
-  - ไฟล์: `src/lib/ldap.ts`, `src/app/api/ad-sync/route.ts`
+  - ไฟล์: `src/lib/ldap.ts`, `src/app/api/ad-sync/route.ts`, `src/app/(main)/admin/users/page.tsx`
 
 ---
 

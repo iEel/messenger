@@ -263,7 +263,9 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
     ));
 
     // 2. Bind ด้วย service account
+    console.log(`[AD Sync] Binding to ${settings.url} ...`);
     await client.bind(bindDn, bindPw);
+    console.log(`[AD Sync] Bind สำเร็จ — ค้นหา ${usernamesToSearch.length} users: ${usernamesToSearch.join(', ')}`);
 
     // 3. ค้นหาใน AD โดยแบ่งเป็นชุดๆ ละ 50 คน
     const chunkSize = 50;
@@ -278,6 +280,7 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
       const filter = `(&(objectClass=user)(objectCategory=person)(|${userFilters}))`;
 
       try {
+        console.log(`[AD Sync] Searching baseDn=${settings.baseDn}, filter=${filter.substring(0, 100)}...`);
         const { searchEntries } = await client.search(settings.baseDn, {
           filter,
           scope: 'sub',

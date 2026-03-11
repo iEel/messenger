@@ -1,34 +1,5 @@
-import ldap from 'ldapjs';
+import { Client } from 'ldapts';
 import { query } from './db';
-
-// ★ ldapjs มี bug ภายใน — parser throw TypeError ตอน parse AD response
-// Error เกิดก่อน event emit → client.on('error') จับไม่ได้ → ต้องจับที่ process level
-if (typeof process !== 'undefined' && !((globalThis as Record<string, unknown>).__ldapErrorHandlerInstalled)) {
-  (globalThis as Record<string, unknown>).__ldapErrorHandlerInstalled = true;
-
-  process.on('uncaughtException', (err) => {
-    const msg = err?.message || '';
-    const stack = err?.stack || '';
-
-    // เฉพาะ ldapjs errors เท่านั้น (ดูจาก stack trace หรือข้อความที่เฉพาะเจาะจง)
-    // หมายเหตุ: Next.js build อาจจะ minify จนคำว่า 'ldap' หายไปจาก stack
-    const isLdapError =
-      msg.includes('toLowerCase') || // ldapjs .attributes[].type.toLowerCase() bug
-      msg.includes('Parser error for') ||
-      (msg.includes('Expected 0x') && stack.includes('readTag')) ||
-      stack.includes('ldap');
-
-    if (isLdapError) {
-      // แอบ log เงียบๆ ไม่ปิดแอป
-      console.error(`[LDAP] Suppressed internal parser error: ${msg.substring(0, 100)}`);
-      return; 
-    }
-
-    // Error อื่น (เช่น DB ขาดการเชื่อมต่อ, code ตัวเองพัง) → log แล้วปล่อย PM2 restart
-    console.error(`[Uncaught Exception - Fatal] ${msg}`, err);
-    process.exit(1);
-  });
-}
 
 interface LdapSettings {
   url: string;
@@ -87,79 +58,34 @@ function parseDN(dn: string): { department: string; branch: string } {
 }
 
 /**
- * สร้าง LDAP client
+ * สร้าง ldapts Client
  */
-function createClient(url: string): ldap.Client {
-  const client = ldap.createClient({
-    url: [url],
+function createClient(url: string): Client {
+  return new Client({
+    url,
     tlsOptions: { rejectUnauthorized: false },
-    connectTimeout: 10000,
-    timeout: 10000,
-    strictDN: false, // ★ ไม่ crash เมื่อ AD ส่ง DN ที่ไม่ตรง spec
-  });
-
-  // ★ จับ error จาก ldapjs parser ไม่ให้ crash ทั้ง app (uncaughtException)
-  client.on('error', (err) => {
-    console.error('[LDAP Client] Error (suppressed):', err?.message || err);
-  });
-  client.on('connectError', (err) => {
-    console.error('[LDAP Client] Connect error:', err?.message || err);
-  });
-
-  return client;
-}
-
-/**
- * Bind (authenticate) ด้วย LDAP
- */
-function bindAsync(client: ldap.Client, dn: string, password: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    client.bind(dn, password, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
+    connectTimeout: 15000,
+    timeout: 30000,
+    strictDN: false,
   });
 }
 
 /**
- * Search LDAP entries
+ * ดึง attributes จาก search entry เป็น Record
  */
-function searchAsync(client: ldap.Client, baseDn: string, opts: ldap.SearchOptions): Promise<ldap.SearchEntry[]> {
-  return new Promise((resolve, reject) => {
-    const entries: ldap.SearchEntry[] = [];
-    let resolved = false;
-    const done = (result: ldap.SearchEntry[]) => {
-      if (resolved) return;
-      resolved = true;
-      clearTimeout(timer);
-      resolve(result);
-    };
-
-    // ★ Timeout 30 วินาที — ถ้า search ค้าง (parser crash → ไม่มี end/error event)
-    const timer = setTimeout(() => {
-      console.warn(`[LDAP Search] Timeout 30s — returning ${entries.length} partial results`);
-      done(entries);
-    }, 30000);
-
-    try {
-      client.search(baseDn, opts, (err, res) => {
-        if (err) { clearTimeout(timer); return reject(err); }
-        res.on('searchEntry', (entry) => {
-          try {
-            entries.push(entry);
-          } catch { /* skip bad entry */ }
-        });
-        res.on('error', (err) => {
-          console.error('[LDAP Search] Error during search (returning partial results):', err?.message);
-          done(entries);
-        });
-        res.on('end', () => done(entries));
-      });
-    } catch (err) {
-      clearTimeout(timer);
-      reject(err);
+function extractAttrs(entry: Record<string, unknown>): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  for (const [k, v] of Object.entries(entry)) {
+    if (k === 'dn' || k === 'controls') continue;
+    if (v != null && typeof k === 'string') {
+      // ldapts returns arrays for multi-value, take first
+      const val = Array.isArray(v) ? v[0] : v;
+      if (val != null) {
+        attrs[k.toLowerCase()] = String(val);
+      }
     }
-  });
+  }
+  return attrs;
 }
 
 /**
@@ -177,24 +103,24 @@ export async function ldapAuthenticate(username: string, password: string): Prom
 
   try {
     // 1. Bind ด้วย user credentials
-    await bindAsync(client, upn, password);
+    await client.bind(upn, password);
 
     // 2. Bind ด้วย service account เพื่อ search ข้อมูล
     const bindDn = process.env.LDAP_BIND_DN;
     const bindPw = process.env.LDAP_BIND_PASSWORD;
     if (bindDn && bindPw) {
-      await bindAsync(client, bindDn, bindPw);
+      await client.bind(bindDn, bindPw);
     }
 
     // 3. Search user info
     const searchFilter = `(&(objectClass=user)(objectCategory=person)(|(userPrincipalName=${upn})(sAMAccountName=${username})))`;
-    const entries = await searchAsync(client, settings.baseDn, {
+    const { searchEntries } = await client.search(settings.baseDn, {
       filter: searchFilter,
       scope: 'sub',
       attributes: ['cn', 'employeeID', 'mail', 'company', 'distinguishedName', 'userPrincipalName', 'sAMAccountName'],
     });
 
-    if (entries.length === 0) {
+    if (searchEntries.length === 0) {
       // Auth สำเร็จแต่หาข้อมูลไม่เจอ — ใช้ username เป็น fallback
       return {
         cn: username,
@@ -207,30 +133,8 @@ export async function ldapAuthenticate(username: string, password: string): Prom
       };
     }
 
-    const entry = entries[0] as unknown as Record<string, unknown>;
-
-    // Extract attributes from ldapjs SearchEntry (cast to any for internal access)
-    const attrs: Record<string, string> = {};
-
-    // Method 1: entry.attributes (ldapjs v3)
-    const rawAttrs = (entry.attributes || entry.ppiA || []) as { type: string; values: string[] }[];
-    if (Array.isArray(rawAttrs)) {
-      for (const a of rawAttrs) {
-        if (a.type && a.values?.[0] != null) {
-          attrs[a.type.toLowerCase()] = String(a.values[0]);
-        }
-      }
-    }
-
-    // Method 2: entry.object (ldapjs v2 compat)
-    const obj = (entry.object || entry.ppiB || {}) as Record<string, unknown>;
-    for (const [k, v] of Object.entries(obj)) {
-      if (!attrs[k.toLowerCase()] && v) {
-        attrs[k.toLowerCase()] = String(v);
-      }
-    }
-
-    const dn = attrs['distinguishedname'] || '';
+    const attrs = extractAttrs(searchEntries[0] as unknown as Record<string, unknown>);
+    const dn = attrs['distinguishedname'] || (searchEntries[0].dn as string) || '';
     const { department, branch } = parseDN(dn);
 
     return {
@@ -246,7 +150,7 @@ export async function ldapAuthenticate(username: string, password: string): Prom
     console.error('[LDAP] Auth error:', err);
     return null;
   } finally {
-    try { client.unbind(); } catch { /* ignore */ }
+    try { await client.unbind(); } catch { /* ignore */ }
   }
 }
 
@@ -268,17 +172,18 @@ export async function ldapTestConnection(): Promise<{ success: boolean; message:
   const client = createClient(settings.url);
 
   try {
-    await bindAsync(client, bindDn, bindPw);
+    await client.bind(bindDn, bindPw);
 
     // นับ user objects
     if (settings.baseDn) {
-      const entries = await searchAsync(client, settings.baseDn, {
+      const { searchEntries } = await client.search(settings.baseDn, {
         filter: '(&(objectClass=user)(objectCategory=person))',
         scope: 'sub',
         attributes: ['cn'],
         sizeLimit: 1000,
+        paged: true,
       });
-      return { success: true, message: `เชื่อมต่อสำเร็จ ✅ พบ ${entries.length} users`, userCount: entries.length };
+      return { success: true, message: `เชื่อมต่อสำเร็จ ✅ พบ ${searchEntries.length} users`, userCount: searchEntries.length };
     }
 
     return { success: true, message: 'เชื่อมต่อสำเร็จ ✅ (Bind OK)' };
@@ -286,12 +191,12 @@ export async function ldapTestConnection(): Promise<{ success: boolean; message:
     const errMsg = err instanceof Error ? err.message : String(err);
     return { success: false, message: `เชื่อมต่อไม่ได้: ${errMsg}` };
   } finally {
-    try { client.unbind(); } catch { /* ignore */ }
+    try { await client.unbind(); } catch { /* ignore */ }
   }
 }
 
 // ============================================================
-// ★ AD Sync — ดึง user จาก AD ทั้งหมด เทียบกับ DB
+// ★ AD Sync — ดึง user จาก DB ก่อน แล้วค้นหาใน AD ทีละชุด
 // ============================================================
 
 interface AdSyncResult {
@@ -305,13 +210,20 @@ interface AdSyncResult {
 
 /**
  * ★ Sync AD users กับ DB
- * - ดึง user ทั้งหมดจาก AD (via service account)
- * - เทียบกับ AD users ใน DB (PasswordHash = 'AD_USER_NO_LOCAL_PASSWORD' หรือ AdUsername != NULL)
+ * - ดึง AD users จาก DB ของเราก่อน
+ * - ค้นหาใน AD เฉพาะคนที่มีในระบบ (ทีละ 50 คน)
  * - AD user ที่ไม่อยู่ใน AD แล้ว → set IsActive = 0
- * - AD user ที่ข้อมูลเปลี่ยน (ชื่อ, email, แผนก) → update DB
+ * - AD user ที่ข้อมูลเปลี่ยน → update DB
  */
 export async function ldapSyncUsers(): Promise<AdSyncResult> {
-  const result: AdSyncResult = { success: false, message: '', synced: 0, disabled: 0, updated: 0, errors: [] };
+  const result: AdSyncResult = {
+    success: false,
+    message: '',
+    synced: 0,
+    disabled: 0,
+    updated: 0,
+    errors: [],
+  };
 
   const settings = await getLdapSettings();
   if (!settings.enabled || !settings.url || !settings.baseDn) {
@@ -322,7 +234,7 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
   const bindDn = process.env.LDAP_BIND_DN;
   const bindPw = process.env.LDAP_BIND_PASSWORD;
   if (!bindDn || !bindPw) {
-    result.message = 'ไม่มี LDAP_BIND_DN / LDAP_BIND_PASSWORD ใน .env';
+    result.message = 'ไม่พบ LDAP_BIND_DN หรือ LDAP_BIND_PASSWORD ใน .env';
     return result;
   }
 
@@ -341,6 +253,7 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
 
     if (dbAdUsers.length === 0) {
       result.message = 'ไม่มี AD User ในระบบ ไม่ต้องดึงข้อมูลจาก LDAP';
+      result.success = true;
       return result;
     }
 
@@ -350,11 +263,12 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
     ));
 
     // 2. Bind ด้วย service account
-    await bindAsync(client, bindDn, bindPw);
+    await client.bind(bindDn, bindPw);
 
-    // 3. ค้นหาใน AD โดยแบ่งเป็นชุดๆ ละ 50 คน (ป้องกัน filter ยาวเกิน + กัน parser ล้น)
+    // 3. ค้นหาใน AD โดยแบ่งเป็นชุดๆ ละ 50 คน
     const chunkSize = 50;
-    const allEntries: ldap.SearchEntry[] = [];
+    const adUsernames = new Set<string>();
+    const adUserMap = new Map<string, { cn: string; mail: string; department: string }>();
 
     for (let i = 0; i < usernamesToSearch.length; i += chunkSize) {
       const chunk = usernamesToSearch.slice(i, i + chunkSize);
@@ -363,68 +277,44 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
       const userFilters = chunk.map(u => `(sAMAccountName=${u})(userPrincipalName=${u}@*)`).join('');
       const filter = `(&(objectClass=user)(objectCategory=person)(|${userFilters}))`;
 
-      const entries = await searchAsync(client, settings.baseDn, {
-        filter,
-        scope: 'sub',
-        attributes: ['cn', 'employeeID', 'mail', 'company', 'distinguishedName', 'userPrincipalName', 'sAMAccountName'],
-        sizeLimit: 100, // แค่ 50-100 คนต่อรอบ ไม่มีปัญหาเรื่อง buffer แน่นอน
-      });
-      allEntries.push(...entries);
-    }
-
-    // สร้าง Set ของ AD usernames ที่เจอใน AD (sAMAccountName / UPN prefix)
-    const adUsernames = new Set<string>();
-    const adUserMap = new Map<string, { cn: string; mail: string; department: string }>();
-
-    for (const entry of allEntries) {
       try {
-        const attrs: Record<string, string> = {};
+        const { searchEntries } = await client.search(settings.baseDn, {
+          filter,
+          scope: 'sub',
+          attributes: ['cn', 'employeeID', 'mail', 'company', 'distinguishedName', 'userPrincipalName', 'sAMAccountName'],
+          sizeLimit: 100,
+        });
 
-        // ldapjs v3: entry.attributes
-        const rawAttrs = ((entry as unknown as Record<string, unknown>).attributes || []) as { type?: string; values?: string[] }[];
-        if (Array.isArray(rawAttrs)) {
-          for (const a of rawAttrs) {
-            if (a && typeof a.type === 'string' && a.values?.[0] != null) {
-              attrs[a.type.toLowerCase()] = String(a.values[0]);
-            }
+        for (const entry of searchEntries) {
+          const attrs = extractAttrs(entry as unknown as Record<string, unknown>);
+          const upn = attrs['userprincipalname'] || '';
+          const sam = attrs['samaccountname'] || '';
+          const username = sam || upn.split('@')[0] || '';
+
+          if (username) {
+            adUsernames.add(username.toLowerCase());
+
+            const dn = attrs['distinguishedname'] || (entry.dn as string) || '';
+            const { department } = parseDN(dn);
+
+            adUserMap.set(username.toLowerCase(), {
+              cn: attrs['cn'] || username,
+              mail: attrs['mail'] || '',
+              department,
+            });
           }
         }
 
-        // ldapjs v2: entry.object
-        const obj = ((entry as unknown as Record<string, unknown>).object || {}) as Record<string, unknown>;
-        for (const [k, v] of Object.entries(obj)) {
-          if (k && typeof k === 'string' && !attrs[k.toLowerCase()] && v != null) {
-            attrs[k.toLowerCase()] = String(v);
-          }
-        }
-
-        // Extract username
-        const upn = attrs['userprincipalname'] || '';
-        const sam = attrs['samaccountname'] || '';
-        const username = sam || upn.split('@')[0] || '';
-
-        if (username) {
-          adUsernames.add(username.toLowerCase());
-
-          const dn = attrs['distinguishedname'] || '';
-          const { department } = parseDN(dn);
-
-          adUserMap.set(username.toLowerCase(), {
-            cn: attrs['cn'] || username,
-            mail: attrs['mail'] || '',
-            department,
-          });
-        }
-      } catch (parseErr) {
-        console.warn('[AD Sync] Skip entry (parse error):', parseErr);
-        continue;
+        console.log(`[AD Sync] Chunk ${Math.floor(i / chunkSize) + 1}: ค้นหา ${chunk.length} คน, พบ ${searchEntries.length} คน`);
+      } catch (searchErr) {
+        console.error(`[AD Sync] Search error for chunk ${Math.floor(i / chunkSize) + 1}:`, searchErr);
+        result.errors.push(`Search chunk error: ${searchErr}`);
       }
     }
 
     result.synced = adUsernames.size;
 
     // ★★★ SAFEGUARD: ถ้าค้นหาแล้วได้ 0 users = LDAP search ล้มเหลว → ห้าม disable ใครเลย
-    // จะ disable ได้ก็ต่อเมื่อ search ทำงานจริง (เจอ user อื่นๆ แต่ไม่เจอคนนี้)
     if (adUsernames.size === 0) {
       result.message = `AD search ส่ง 0 users (ค้นหา ${usernamesToSearch.length} คน) — ข้ามการ disable เพื่อป้องกัน false positive`;
       console.warn(`[AD Sync] ${result.message}`);
@@ -503,7 +393,6 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
     console.error(`[AD Sync] ${result.message}`);
     return result;
   } finally {
-    try { client.unbind(); } catch { /* ignore */ }
+    try { await client.unbind(); } catch { /* ignore */ }
   }
 }
-

@@ -61,12 +61,12 @@ function parseDN(dn: string): { department: string; branch: string } {
  * สร้าง ldapts Client
  */
 function createClient(url: string): Client {
+  const isLdaps = url.toLowerCase().startsWith('ldaps://');
   return new Client({
     url,
-    tlsOptions: { rejectUnauthorized: false },
     connectTimeout: 15000,
     timeout: 30000,
-    strictDN: false,
+    ...(isLdaps && { tlsOptions: { rejectUnauthorized: false } }),
   });
 }
 

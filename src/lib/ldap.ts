@@ -423,11 +423,10 @@ export async function ldapSyncUsers(): Promise<AdSyncResult> {
 
     result.synced = adUsernames.size;
 
-    // ★★★ SAFEGUARD: ถ้าค้นหาทั้งหมดแล้วได้ 0 แต่ในระบบมีพนักงานเยอะมาก อาจเกิดจาก LDAP error กลางทาง
-    // (แต่ถ้าระบบเพิ่งมี 1-2 คนแล้วโดนลบหมด AD จริง ก็อาจเป็น 0 ได้)
-    // ตรงนี้เราไว้ใจได้มากขึ้นเพราะแบ่งดึงทีละ 50 คน โอกาส parser พังแทบไม่มีแล้ว
-    if (adUsernames.size === 0 && usernamesToSearch.length > 5) {
-      result.message = 'AD search ส่ง 0 users (ทั้งที่ค้นหาจากหลายคน) — ข้าม disable เพื่อป้องกัน false positive';
+    // ★★★ SAFEGUARD: ถ้าค้นหาแล้วได้ 0 users = LDAP search ล้มเหลว → ห้าม disable ใครเลย
+    // จะ disable ได้ก็ต่อเมื่อ search ทำงานจริง (เจอ user อื่นๆ แต่ไม่เจอคนนี้)
+    if (adUsernames.size === 0) {
+      result.message = `AD search ส่ง 0 users (ค้นหา ${usernamesToSearch.length} คน) — ข้ามการ disable เพื่อป้องกัน false positive`;
       console.warn(`[AD Sync] ${result.message}`);
       result.success = false;
       return result;

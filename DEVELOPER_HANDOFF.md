@@ -672,6 +672,7 @@ cancelled                         issue → return / reschedule
   - API: `POST /api/ad-sync` (manual trigger, admin only) + `GET /api/ad-sync` (ดูสถานะ)
   - **UI:** ปุ่ม "AD Sync" บนหน้าจัดการผู้ใช้ + loading spinner + toast ผลลัพธ์
   - Auto-sync ทุก 6 ชั่วโมง (เมื่อ LDAP enabled) + ครั้งแรก 30 วิหลัง server start
+  - **Audit Trail:** ทั้ง manual + auto-sync บันทึกลง AuditLog (auto ใช้ userId=0, targetType=`ad_sync_auto`)
   - ไฟล์: `src/lib/ldap.ts`, `src/app/api/ad-sync/route.ts`, `src/app/(main)/admin/users/page.tsx`
 
 ---

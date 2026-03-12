@@ -23,6 +23,14 @@ async function runAutoSync() {
     syncState.lastSync = new Date().toISOString();
     syncState.lastResult = result as unknown as Record<string, unknown>;
     console.log(`[AD Sync] Auto-sync completed: ${result.message}`);
+
+    // ★ Audit log สำหรับ auto-sync (userId = 0 = ระบบอัตโนมัติ)
+    logAudit({
+      action: 'settings_updated',
+      userId: 0,
+      targetType: 'ad_sync_auto',
+      details: `[Auto] AD Sync: ${result.message}`,
+    });
   } catch (err) {
     console.error('[AD Sync] Auto-sync error:', err);
   }

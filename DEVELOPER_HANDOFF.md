@@ -537,7 +537,8 @@ cancelled                         issue → return / reschedule
   - `src/lib/audit.ts` — `logAudit()` helper, auto-create table `AuditLog`
   - `src/app/api/audit/route.ts` — GET พร้อม filter/search/pagination
   - `src/app/(main)/admin/audit/page.tsx` — หน้า Audit Trail (ค้นหา, กรอง, วันที่)
-  - บันทึกครบ: Login, สร้าง/จ่าย/ยกเลิกใบงาน, เปลี่ยนสถานะ, สร้าง/แก้ไข/ปิดผู้ใช้, แก้ตั้งค่า, เริ่ม/จบรอบวิ่ง
+  - บันทึกครบ: Login, สร้าง/จ่าย/ยกเลิกใบงาน, เปลี่ยนสถานะ, สร้าง/แก้ไข/ปิดผู้ใช้, แก้ตั้งค่า, เริ่ม/จบรอบวิ่ง, AD Sync (manual + auto)
+  - `userId` nullable — `null` = ระบบอัตโนมัติ (แสดงเป็น "ระบบอัตโนมัติ" ใน UI)
   - แก้ timezone ด้วย `parseLocalDate()` — strip `Z` suffix จาก MSSQL
 - ★ **LDAP/AD Hybrid Authentication** — Login ได้ทั้ง Local User และ Active Directory
   - `src/lib/ldap.ts` — ใช้ **`ldapts`** (แทน ldapjs ที่มี parser bug กับ AD) — LDAP authenticate, test connection, sync, parse DN

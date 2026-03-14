@@ -21,7 +21,7 @@ export type AuditAction =
 
 interface AuditLogEntry {
   action: AuditAction;
-  userId: number;
+  userId: number | null;  // null = ระบบอัตโนมัติ
   targetType?: string;   // 'task' | 'user' | 'trip' | 'settings'
   targetId?: number;
   details?: string;
@@ -36,33 +36,50 @@ export async function logAudit(entry: AuditLogEntry) {
   try {
     const pool = await getPool();
 
-    // Ensure table exists
+    // Ensure table exists (ลบ FK constraint เพื่อรองรับ userId = NULL สำหรับ auto-sync)
     await pool.request().query(`
       IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'AuditLog')
       CREATE TABLE AuditLog (
         Id INT IDENTITY(1,1) PRIMARY KEY,
         Action NVARCHAR(50) NOT NULL,
-        UserId INT NOT NULL,
+        UserId INT,
         UserName NVARCHAR(100),
         TargetType NVARCHAR(50),
         TargetId INT,
         Details NVARCHAR(MAX),
         IpAddress NVARCHAR(50),
-        CreatedAt DATETIME2 DEFAULT GETDATE(),
-        CONSTRAINT FK_AuditLog_User FOREIGN KEY (UserId) REFERENCES Users(Id)
+        CreatedAt DATETIME2 DEFAULT GETDATE()
       )
     `);
 
+    // ★ ลบ FK constraint ถ้ามีอยู่ (จาก version เก่า)
+    await pool.request().query(`
+      IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+                 WHERE CONSTRAINT_NAME = 'FK_AuditLog_User' AND TABLE_NAME = 'AuditLog')
+      ALTER TABLE AuditLog DROP CONSTRAINT FK_AuditLog_User
+    `);
+
+    // ★ เปลี่ยน UserId เป็น nullable (ถ้ายังเป็น NOT NULL อยู่)
+    await pool.request().query(`
+      IF EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
+                 WHERE TABLE_NAME = 'AuditLog' AND COLUMN_NAME = 'UserId' AND IS_NULLABLE = 'NO')
+      ALTER TABLE AuditLog ALTER COLUMN UserId INT NULL
+    `);
+
     // Get user name
-    const userResult = await query<{ FullName: string }[]>(
-      'SELECT FullName FROM Users WHERE Id = @userId',
-      { userId: entry.userId }
-    );
+    let userName = 'ระบบอัตโนมัติ';
+    if (entry.userId) {
+      const userResult = await query<{ FullName: string }[]>(
+        'SELECT FullName FROM Users WHERE Id = @userId',
+        { userId: entry.userId }
+      );
+      userName = userResult[0]?.FullName || 'Unknown';
+    }
 
     await pool.request()
       .input('action', entry.action)
-      .input('userId', entry.userId)
-      .input('userName', userResult[0]?.FullName || 'Unknown')
+      .input('userId', entry.userId || null)
+      .input('userName', userName)
       .input('targetType', entry.targetType || null)
       .input('targetId', entry.targetId || null)
       .input('details', entry.details || null)

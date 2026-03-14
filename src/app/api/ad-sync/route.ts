@@ -24,10 +24,10 @@ async function runAutoSync() {
     syncState.lastResult = result as unknown as Record<string, unknown>;
     console.log(`[AD Sync] Auto-sync completed: ${result.message}`);
 
-    // ★ Audit log สำหรับ auto-sync (userId = 0 = ระบบอัตโนมัติ)
+    // ★ Audit log สำหรับ auto-sync (userId = null = ระบบอัตโนมัติ)
     logAudit({
       action: 'settings_updated',
-      userId: 0,
+      userId: null,
       targetType: 'ad_sync_auto',
       details: `[Auto] AD Sync: ${result.message}`,
     });
